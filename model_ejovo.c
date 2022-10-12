@@ -6,7 +6,7 @@
 #include "harmonics.h"
 #include "gmp.h"
 
-#define LMAX 20
+#define LMAX 50
 
 // compute the coefficient using the gmp multi-precision library
 // mpf_t compute_scale(int l, int m) {
@@ -126,8 +126,8 @@ int main(int argc, char *argv[]) {
     const double th_f = PI;
     const double ph_0 = 0;
     const double ph_f = TWO_PI;
-    const int t = 6;
-    const int p = 120;
+    const int t = 180;
+    const int p = 360;
 
     // double C_lm = double 
 
@@ -219,16 +219,16 @@ int main(int argc, char *argv[]) {
                         // printf("(%d) P_%d^%d(th_%d) = %lf\n", index, l, m, i, P_lm_th[PLM(l, m, i)]);
 
                     // printf("(%d) data: %lf\n", count, data->r[j * data->t + i]);
-                    c_integral += data->r[j * data->t + i] * P_lm_th[PLM(l, m, j)] * cos_mph;
-                    s_integral += data->r[j * data->t + i] * P_lm_th[PLM(l, m, j)] * sin_mph;
+                    c_integral += data->r[j * data->t + i] * P_lm_th[PLM(l, m, i)] * cos_mph;
+                    s_integral += data->r[j * data->t + i] * P_lm_th[PLM(l, m, i)] * sin_mph;
 
                     count ++;
                 }
             }
 
             // printf("===========================\n");
-            c_integral *= (d_ph * d_th);
-            s_integral *= (d_ph * d_th);
+            c_integral *= (d_ph * d_th) / (TWO_PI);
+            s_integral *= (d_ph * d_th) / (TWO_PI);
 
 
             // Now need to normalize with the factorial expression
@@ -237,10 +237,21 @@ int main(int argc, char *argv[]) {
             S_lm[PT(l, m)] = s_integral;
 
             // let's print out the computed values
-            // printf("C(%d, %d) = %lf \t S(%d, %d) = %lf\n", l, m, c_integral, l, m, s_integral);
+            printf("C(%d, %d) = %lf \t S(%d, %d) = %lf\n", l, m, c_integral, l, m, s_integral);
             // printf("C(%d, %d) = %lf\n", l, m, c_integral);
             // printf("S(%d, %d) = %lf\n", l, m, s_integral);
             // printf("C(%d, %d) = %lf\n", l, m, c_integral);
+        }
+    }
+
+    // output C_lm and S_lm to a file
+    const char filename[] = "ejovo50.txt";
+
+    FILE *out = fopen(filename, "w");
+
+    for (int l = 0; l <= LMAX; l++) {
+        for (int m = 0; m <= l; m++) {
+            fprintf(out, "%d\t%d\t%.15lf\t%.15lf\n", l, m, C_lm[PT(l, m)], S_lm[PT(l, m)]);
         }
     }
 
@@ -257,7 +268,7 @@ int main(int argc, char *argv[]) {
 
     // printf("}\n");
 
-    // print the matrix (at least the first 10 elements)
+    // // print the matrix (at least the first 10 elements)
     // for (int i = 0; i < nrows; i++) {
     //     printf("| ");
     //     for (int j = 0; j < t; j++) {
@@ -269,18 +280,18 @@ int main(int argc, char *argv[]) {
 
     printf("=============================\n");
 
-    for (int l = 0; l <= LMAX; l++) {
-        for (int m = 0; m <= l; m++) {
+    // for (int l = 0; l <= LMAX; l++) {
+    //     for (int m = 0; m <= l; m++) {
 
-            printf("(%d, %d) ", l, m);
-            printf("| ");
-            for (int j = 0; j < t; j++) {
-                printf("%7.3lf ", P_lm_th[PLM(l, m, j)]);
-                // printf("%7.3lf ", P_lm_th[]);
-            }
-            printf("|\n");
-        }
-    }
+    //         printf("(%d, %d) ", l, m);
+    //         printf("| ");
+    //         for (int j = 0; j < t; j++) {
+    //             printf("%7.3lf ", P_lm_th[PLM(l, m, j)]);
+    //             // printf("%7.3lf ", P_lm_th[]);
+    //         }
+    //         printf("|\n");
+    //     }
+    // }
 
     write_iso(data, "iso2.csv");
 
