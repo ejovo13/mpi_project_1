@@ -257,33 +257,38 @@ data_iso *load_iso(const char *filename, int t, int p) {
     const double d_th = PI / t; 
     const double d_ph = TWO_PI / p;
 
-    // Create the data object matrix
-    data->th = (double *) malloc(sizeof(*data->th) * t); 
-    data->th[0] = 0;
-    data->ph = (double *) malloc(sizeof(*data->ph) * p);
-    data->ph[0] = PI;
-    data->ph[p / 2] = 0.0;
 	data->N = t * p;
-	data->r  = malloc(data->N * sizeof(double));
     data->p = p;
     data->t = t;
 
+    // Create the data object matrix
+    data->th = (double *) malloc(sizeof(*data->th) * t); 
+    data->ph = (double *) malloc(sizeof(*data->ph) * p);
+	data->r  = malloc(data->N * sizeof(double));
+
+    printf("Trying to read %d elements\n", data->N);
+
+	if (data->th == NULL || data->ph == NULL || data->r == NULL)
+		err(1, "cannot allocate data points\n");
+    
+
     // fill theta matrix
+    data->th[0] = 0;
     for (int i = 1; i < t; i++) {
         data->th[i] = data->th[i - 1] + d_th;
     }
 
     // fill phi array 
+    data->ph[0] = PI;
     for (int i = 1; i < p / 2; i++) {
         data->ph[i] = data->ph[i - 1] + d_ph;
     }
+    data->ph[p / 2] = 0.0;
     for (int i = (p / 2) + 1; i < p; i++) {
         data->ph[i] = data->ph[i - 1] + d_ph;
     }
 
 
-	if (data->th == NULL || data->ph == NULL || data->r == NULL)
-		err(1, "cannot allocate data points\n");
 
 	FILE *f = fopen(filename, "r");
 	if (f == NULL)
@@ -291,11 +296,15 @@ data_iso *load_iso(const char *filename, int t, int p) {
 
     double p_lambda;
     double p_phi;
+    double p_val;
 
 	for (int i = 0; i < data->N; i++) {
 
 		// int k = fscanf(f, "%lg %lg %lg", &data->lambda[i], &data->phi[i], &data->V[i]);
-		int k = fscanf(f, "%lg %lg %lg", &p_lambda, &p_phi, &data->r[i]);
+		int k = fscanf(f, "%lg %lg %lg", &p_lambda, &p_phi, &p_val);
+
+        data->r[i] = p_val;
+        // printf("stored: %lf", data->r[i]);
 
 		if (k == EOF) {
 			if (ferror(f))
