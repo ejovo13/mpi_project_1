@@ -90,6 +90,90 @@ void load_data_points(const char *filename, int npoint, struct data_points *self
 	fclose(f);
 }
 
+data_points_iso *load_data_points_iso(const char *filename, int npoint)
+{
+
+    data_points_iso *data = (data_points_iso *) malloc(sizeof(*data));
+
+    if (!data) err(1, "Cannot allocate data points structure");
+
+	data->npoint = npoint;
+	data->th = malloc(npoint * sizeof(double));
+	data->ph = malloc(npoint * sizeof(double));
+	data->r  = malloc(npoint * sizeof(double));
+	if (data->th == NULL || data->ph == NULL || data->r == NULL)
+		err(1, "cannot allocate data points\n");
+
+	FILE *f = fopen(filename, "r");
+	if (f == NULL)
+		err(1, "cannot open %s", filename);
+
+    double p_lambda;
+    double p_phi;
+    double p_value;    
+
+	for (int i = 0; i < npoint; i++) {
+
+		// int k = fscanf(f, "%lg %lg %lg", &data->lambda[i], &data->phi[i], &data->V[i]);
+		int k = fscanf(f, "%lg %lg %lg", &p_lambda, &p_phi, &p_value);
+
+        // Transformation from NASA's format to ISO format
+        if (p_lambda < 0) {
+            data->ph[i] = p_lambda + TWO_PI;
+        } else {
+            data->ph[i] = p_lambda;
+        }
+        data->th[i] = HALF_PI - p_phi;
+        data->r[i] = p_value;
+
+		if (k == EOF) {
+			if (ferror(f))
+				err(1, "read error");
+			errx(1, "premature end-of-file after %d records", i);
+		}
+		if (k != 3)
+			errx(1, "parse error on line %d", i+1);
+	}
+	fclose(f);
+
+    return data;
+}
+
+void print_npoints(const data_points_iso* data, int npoints) {
+
+    printf("th\t\tph\t\tr\n");
+
+    for (int i = 0; i < npoints; i++) {
+        printf("%lf\t%lf\t%lf\n", data->th[i], data->ph[i], data->r[i]);
+    }
+
+}
+
+void write_npoints(const data_points_iso* data, int npoints, const char *filename) {
+
+    FILE *out = fopen(filename, "w");
+
+    for (int i = 0; i < npoints; i++) {
+        fprintf(out, "%lf\t%lf\t%lf\n", data->th[i], data->ph[i], data->r[i]);
+    }
+
+    fclose(out);
+
+}
+
+// reproduce iso.csv using a limited amount of space
+void write_iso(const data_iso* data, const char *filename) {
+
+    FILE *out = fopen(filename, "w");
+
+    for (int i = 0; i < data->N; i++) {
+        fprintf(out, "%lf\t%lf\t%lf\n", data->th[i % data->t], data->ph[i / data->p], data->r[i]);
+    }
+
+    fclose(out);
+
+}
+
 void load_spherical_harmonics(const char *filename, int lmax, struct spherical_harmonics *self)
 {
 	FILE *g = fopen(filename, "r");
@@ -163,4 +247,74 @@ double evaluate(const struct spherical_harmonics *self, const double *P, double 
 	for (int i = 0; i < sizeCS; i++)
 		V += scratch[i] * self->CS[i];
 	return V;
+}
+
+data_iso *load_iso(const char *filename, int t, int p) {
+
+    data_iso *data = (data_iso *) malloc(sizeof(*data));
+    if (!data) err(1, "Cannot allocate data points structure");
+
+    const double d_th = PI / t; 
+    const double d_ph = TWO_PI / p;
+
+    // Create the data object matrix
+    data->th = (double *) malloc(sizeof(*data->th) * t); 
+    data->th[0] = 0;
+    data->ph = (double *) malloc(sizeof(*data->ph) * p);
+    data->ph[0] = PI;
+    data->ph[p / 2] = 0.0;
+	data->N = t * p;
+	data->r  = malloc(data->N * sizeof(double));
+    data->p = p;
+    data->t = t;
+
+    // fill theta matrix
+    for (int i = 1; i < t; i++) {
+        data->th[i] = data->th[i - 1] + d_th;
+    }
+
+    // fill phi array 
+    for (int i = 1; i < p / 2; i++) {
+        data->ph[i] = data->ph[i - 1] + d_ph;
+    }
+    for (int i = (p / 2) + 1; i < p; i++) {
+        data->ph[i] = data->ph[i - 1] + d_ph;
+    }
+
+
+	if (data->th == NULL || data->ph == NULL || data->r == NULL)
+		err(1, "cannot allocate data points\n");
+
+	FILE *f = fopen(filename, "r");
+	if (f == NULL)
+		err(1, "cannot open %s", filename);
+
+    double p_lambda;
+    double p_phi;
+
+	for (int i = 0; i < data->N; i++) {
+
+		// int k = fscanf(f, "%lg %lg %lg", &data->lambda[i], &data->phi[i], &data->V[i]);
+		int k = fscanf(f, "%lg %lg %lg", &p_lambda, &p_phi, &data->r[i]);
+
+		if (k == EOF) {
+			if (ferror(f))
+				err(1, "read error");
+			errx(1, "premature end-of-file after %d records", i);
+		}
+		if (k != 3)
+			errx(1, "parse error on line %d", i+1);
+	}
+	fclose(f);
+
+    return data;
+
+
+
+
+
+
+    return data;
+
+
 }

@@ -1,2 +1,5 @@
 test
 *.mod
+*.o
+model
+model_ejovo

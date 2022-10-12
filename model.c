@@ -75,7 +75,7 @@ double norm(int n, double const *x)
            s2 += xabs * xabs;
            continue;
        }
-       if (xabs <= rdwarf) {                         // sum for small components
+       if (xabs <= rdwarf) {                         // sum for small components 
            if (xabs > x3max) {
                double d3 = x3max / xabs;
                s3 = 1 + s3 * (d3 * d3);
@@ -149,13 +149,13 @@ void multiply_householder(int m, int n, double *v, double tau, double *c, int ld
  *
  *     H(i) = I - tau[i] * v * v**T
  *
- * where tau[i] is a real scalar, and v is a real vector with v[0:i-1] = 0 and
+ * where tau[i] is a real scalar, and v is a real vector with v[0:i-1] = 0 and 
  * v[i] = 1; v[i+1:m] is stored on exit in A[i+1:m, i].
  */
 void QR_factorize(int m, int n, double * A, double * tau)
 {
 	for (int i = 0; i < n; ++i) {
-
+		
 		/* Generate elementary reflector H(i) to annihilate A(i+1:m,i) */
 		double aii = A[i + i * m];
 		double anorm = -norm(m - i, &A[i + i * m]);
@@ -178,7 +178,7 @@ void QR_factorize(int m, int n, double * A, double * tau)
  * reflectors
  *
  *       Q = H(1) * H(2) ... H(k)
- *
+ * 
  * A is a 2D array of dimension (m, k), which contains a QR factorisation
  * computed by QR_factorize().  A is not modified.
  *
@@ -205,7 +205,7 @@ void multiply_Qt(int m, int k, double * A, double * tau, double * c)
  * the upper-triangle is read by this function. b and x are n element vectors.
  * On exit, b is overwritten with x.
  */
-void triangular_solve(int n, const double *U, int ldu, double *b)
+void triangular_solve(int n, const double *U, int ldu, double *b) 
 {
 	for (int k = n - 1; k >= 0; k--) {
            b[k] /= U[k * ldu + k];
@@ -219,11 +219,11 @@ void triangular_solve(int n, const double *U, int ldu, double *b)
  * linear systems involving an m-by-n matrix A using a QR factorization of A.
  * It is assumed that A has full rank (and m >= n).
  *
- * A is a 2D array of dimension (m, n).  On exit, A is overwritten by the
+ * A is a 2D array of dimension (m, n).  On exit, A is overwritten by the 
  * details of its QR factorization (cf. QR_factorize).
  *
- * b is a vector of size m.  On exit, b[0:n] contain the least squares solution
- * vector; the residual sum of squares for the solution is given by the sum of
+ * b is a vector of size m.  On exit, b[0:n] contain the least squares solution 
+ * vector; the residual sum of squares for the solution is given by the sum of 
  * squares of b[n:m].
  */
 void linear_least_squares(int m, int n, double *A, double *b)
@@ -266,18 +266,18 @@ int main(int argc, char ** argv)
 	struct data_points data;
 	load_data_points(data_filename, npoint, &data);
 	printf("Successfully read %d data points\n", npoint);
-
+	
 	printf("Building matrix\n");
 	struct spherical_harmonics model;
 	setup_spherical_harmonics(lmax, &model);
 
 	for (int i = 0; i < npoint; i++) {
 		computeP(&model, P, sin(data.phi[i]));
-
+		
 		for (int l = 0; l <= lmax; l++) {
 			/* zonal term */
 			A[i + npoint * CT(l, 0)] = P[PT(l, 0)];
-
+	
 			/* tesseral terms */
 			for (int m = 1; m <= l; m++) {
 				A[i + npoint * CT(l, m)] = P[PT(l, m)] * cos(m * data.lambda[i]);
@@ -285,16 +285,16 @@ int main(int argc, char ** argv)
 			}
 		}
 	}
-
+	
 	double FLOP = 2. * nvar * nvar * npoint;
 	char hflop[16];
 	human_format(hflop, FLOP);
 	printf("Least Squares (%sFLOP)\n", hflop);
 	double start = wtime();
-
+	
 	/* the real action takes place here */
 	linear_least_squares(npoint, nvar, A, data.V);
-
+	
 	double t = wtime()  - start;
 	double FLOPS = FLOP / t;
 	char hflops[16];
