@@ -22,6 +22,14 @@ struct spherical_harmonics {
 	double *B;
 };
 
+typedef struct spherical_model {
+    int lmax;
+    double *C_lm;
+    double *S_lm;
+    double *P_lm_th;
+    double *pcs;
+} spherical_model;
+
 /* representation of a sequence of data points */
 struct data_points {
 	int npoint;

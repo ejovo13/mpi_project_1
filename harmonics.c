@@ -254,6 +254,8 @@ data_iso *load_iso(const char *filename, int t, int p) {
     data_iso *data = (data_iso *) malloc(sizeof(*data));
     if (!data) err(1, "Cannot allocate data points structure");
 
+    printf("Opening %s\n", filename);
+
     const double d_th = PI / t; 
     const double d_ph = TWO_PI / p;
 
@@ -298,6 +300,7 @@ data_iso *load_iso(const char *filename, int t, int p) {
     double p_phi;
     double p_val;
 
+    int count = 0;
 	for (int i = 0; i < data->N; i++) {
 
 		// int k = fscanf(f, "%lg %lg %lg", &data->lambda[i], &data->phi[i], &data->V[i]);
@@ -305,6 +308,7 @@ data_iso *load_iso(const char *filename, int t, int p) {
 
         data->r[i] = p_val;
         // printf("stored: %lf", data->r[i]);
+        count++;
 
 		if (k == EOF) {
 			if (ferror(f))
@@ -315,6 +319,8 @@ data_iso *load_iso(const char *filename, int t, int p) {
 			errx(1, "parse error on line %d", i+1);
 	}
 	fclose(f);
+
+    printf("Read %d lines\n", count);
 
     return data;
 
