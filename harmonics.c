@@ -87,7 +87,7 @@ void load_data_points(const char *filename, int npoint, struct data_points *self
 		if (k == EOF) {
 			if (ferror(f))
 				err(1, "read error");
-			errx(1, "premature end-of-file after %d records", i);
+			errx(1, "premature end-of-file after %d aecords", i);
 		}
 		if (k != 3)
 			errx(1, "parse error on line %d", i+1);
@@ -173,7 +173,7 @@ void write_iso(const data_iso* data, const char *filename) {
 
     for (int i = 0; i < data->N; i++) {
         // fprintf(out, "%lf\t%lf\t%lf\n", data->th[i % data->t], data->ph[i / data->p], data->r[i]);
-        fprintf(out, "%lf\t%lf\t%lf\n", vecat_d(data->th, i % data->t), vecat_d(data->ph, i / data->p), vecat_d(data->r, i));
+        fprintf(out, "%.15lf\t%.15lf\t%.15lf\n", vecat_d(data->th, i % data->t), vecat_d(data->ph, i / data->p), vecat_d(data->r, i));
     }
 
     fclose(out);
@@ -237,6 +237,57 @@ void computeP(const struct spherical_harmonics *self, double *P, double sinphi)
     // }
 }
 
+double modelPredict(const iso_model *iso, double theta, double phi) {
+
+    // Compute the P values
+    Matrix_d *P_lm = Matrix_new_d(1, iso->model->ll);
+
+    computeP(iso->coeff, P_lm->data, cos(theta));
+
+    // Now that we have plm, compute the sum using the model's coefficients
+
+    double sum = 0;
+
+    for (int l = 0; l <= iso->model->lmax; l++) {
+        for (int m = 0; m <= l; m++) {
+            // Plm(cos\theta)*[clm cos(m\phi) + slm sin(m\phi)]
+            sum += vecat_d(P_lm, PT(l, m)) * (model_C(iso->model, l, m) * cos(m * phi) +
+                                              model_S(iso->model, l, m) * sin(m * phi));
+
+            // printf("Summing Clm: %lf and Slm: %lf\n", model_C(iso->model, l, m), model_S(iso->model, l, m));
+        }
+    }
+
+    // for (int i = 0; i < iso->model->ll; i++) {
+        // sum += vecat_d(P_lm, i) * (vecat_d(iso->model->C_lm, i) * cos(m * phi))
+    // }
+
+    return sum;
+
+}
+
+// Compute the first n predictions of models data
+Matrix_d *modelPredictN(const iso_model *iso, int __n) {
+
+    int n = iso->data->N < __n ? iso->data->N : __n;
+
+    const Matrix_d *th = iso->data->th;
+    const Matrix_d *ph = iso->data->ph;
+
+    Matrix_d *predictions = Matrix_new_d(1, n);
+
+    for (int i = 0; i < n; i++) {
+
+        int i_ph = i / iso->data->t;
+        int i_th = i % iso->data->t;
+
+        predictions->data[i] = modelPredict(iso, vecat_d(th, i_th), vecat_d(ph, i_ph));
+        // printf("=======================\n");
+    }
+
+    return predictions;
+}
+
 double evaluate(const struct spherical_harmonics *self, const double *P, double lambda)
 {
 	int lmax = self->lmax;
@@ -261,7 +312,7 @@ double evaluate(const struct spherical_harmonics *self, const double *P, double 
 	return V;
 }
 
-spherical_model *newModel(const data_iso *data, int lmax) {
+iso_model *newModel(data_iso *data, int lmax) {
 
     if (lmax < 0) {
         perror("Negative error passed into newModel, exiting\n");
@@ -302,13 +353,18 @@ spherical_model *newModel(const data_iso *data, int lmax) {
 
     printf("[newModel] Data:  { .N = %d, .t = %d, .p = %d}\n", data->N, data->t, data->p);
 
+    // Now let's create the "iso_model type"
+    iso_model *iso = (iso_model *) malloc(sizeof(*iso));
 
-    modelComputePlm(model, data);
+    iso->data = data;
+    iso->model = model;
+
+    modelComputePlm(iso, data);
     printf("[newModel] Completed computing Plm\n");
     modelComputeCSlm(model, data);
     printf("[newModel] Completed computing CSlm\n");
 
-    return model;
+    return iso;
 
 }
 
@@ -335,7 +391,9 @@ void writeModel(const spherical_model *model, const data_iso *data, const char *
 
 }
 
-void modelComputePlm(spherical_model *model, const data_iso *data) {
+void modelComputePlm(iso_model *iso, const data_iso *data) {
+
+    spherical_model *model = iso->model;
 
     const int ll = model->ll;
     Matrix_d *P_lm_th = Matrix_new_d(model->P_lm_th->nrows, model->P_lm_th->ncols);
@@ -345,14 +403,14 @@ void modelComputePlm(spherical_model *model, const data_iso *data) {
 
     printf("[modelComputePlm] Setting up spherical harmonics with lmax: %lu\n", model->lmax);
 
-    struct spherical_harmonics sph_model; // used strictly to compute the P_lm_th matrix
-	setup_spherical_harmonics(model->lmax, &sph_model);
+    struct spherical_harmonics *sph_model = (struct spherical_harmonics *) malloc(sizeof(*sph_model)); // used strictly to compute the P_lm_th matrix
+	setup_spherical_harmonics(model->lmax, sph_model);
 
     for (int i = 0; i < data->t; i++) { // store this data in a more compact matrix
 
         // P is a big matrix who stores the information as (p00(th0) p10(th0) )
-        // printf("Processing i: %d, ptr: %p\n", i, matacc_d(model->P_lm_th, i, 0));
-		computeP(&sph_model, matacc_d(model->P_lm_th, i, 0), cos(vecat_d(data->th, i))); // should be mathematically equal to P(sin(phi_p)), angle named
+        printf("Processing i: %d, ptr: %p\n", i, matacc_d(model->P_lm_th, i, 0));
+		computeP(sph_model, matacc_d(model->P_lm_th, i, 0), cos(vecat_d(data->th, i))); // should be mathematically equal to P(sin(phi_p)), angle named
 
         // double sinth = sin(data->th[i]);
         double sinth = sin(vecat_d(data->th, i));
@@ -361,6 +419,7 @@ void modelComputePlm(spherical_model *model, const data_iso *data) {
         }
     }
 
+    iso->coeff = sph_model;    
     // Matrix_print_d(model->P_lm_th);
 }
 
@@ -371,6 +430,10 @@ void modelComputeCSlm(spherical_model *model, const data_iso *data) {
     const int ll = model->ll;
 
     Matrix_d *C_lm = model->C_lm, *S_lm = model->S_lm;
+    Matrix_d *P_lm = model->P_lm_th;
+
+    printf("[ modelComputeCSlm ] :\n");
+    // Matrix_print_d(P_lm);
 
 
     // Initialize integral values
@@ -387,19 +450,50 @@ void modelComputeCSlm(spherical_model *model, const data_iso *data) {
             c_integral = 0;
             s_integral = 0;
 
-            for (int j = 0; j < data->p; j++) {
+            // integral from 0 to 2pi
+            // for (int j = 0; j < data->p; j++) {
 
-                double ph_j = vecat_d(data->ph, j);
+            //     double ph_j = vecat_d(data->ph, j);
+            //     double cos_mph = cos(m * ph_j);
+            //     double sin_mph = sin(m * ph_j);
+
+            //     // integral from 0 to pi
+            //     for (int i = 0; i < data->t; i++) {
+            //         // if (l == 0 && m == 0) {
+            //             // if (i == 1) {
+            //             // printf("Processing f(%lf, %lf) = %lf\n", vecat_d(data->th, i), vecat_d(data->ph, j), matat_d(data->r, j, i));
+            //             // // printf("with Plm: %lf\n", model_P(model, l, m, i));
+            //             // printf("with Plm: %lf, PT(l, m) = %d\n", matat_d(P_lm, i, PT(l, m)), PT(l, m));
+            //             // }
+            //         // }
+            //         // c_integral += matat_d(data->r, i, j) * model_P(model, l, m, i) * cos_mph * sin(vecat_d(data->th, i));
+            //         // s_integral += matat_d(data->r, i, j) * model_P(model, l, m, i) * sin_mph * sin(vecat_d(data->th, i));
+
+            //         c_integral += matat_d(data->r, j, i) * model_P(model, l, m, i) * cos_mph;
+            //         s_integral += matat_d(data->r, j, i) * model_P(model, l, m, i) * sin_mph;
+
+            //         count ++;
+            //     }
+            // }
+
+            for (int i = 0; i < data->N; i++) {
+
+                int i_th = i % data->t;
+                int i_ph = i / data->t;
+
+                if (l == 0 && m == 0) {
+                    printf("(i = %d) Calculating (th, ph) : f(%lf, %lf) = %lf\n", i, vecat_d(data->th, i_th), vecat_d(data->ph, i_ph), matat_d(data->r, i_ph, i_th)) ;
+                }
+
+                double ph_j = vecat_d(data->ph, i_ph);
                 double cos_mph = cos(m * ph_j);
                 double sin_mph = sin(m * ph_j);
 
-                for (int i = 0; i < data->t; i++) {
+                c_integral += matat_d(data->r, i_ph, i_th) * model_P(model, l, m, i_th) * cos_mph;
+                s_integral += matat_d(data->r, i_ph, i_th) * model_P(model, l, m, i_th) * sin_mph;
 
-                    c_integral += matat_d(data->r, i, j) * model_P(model, l, m, i) * cos_mph;
-                    s_integral += matat_d(data->r, i, j) * model_P(model, l, m, i) * sin_mph;
-
-                    count ++;
-                }
+                count ++;
+                
             }
 
             c_integral *= (data->dp * data->dt) / (TWO_PI);
@@ -408,6 +502,8 @@ void modelComputeCSlm(spherical_model *model, const data_iso *data) {
             // But I actually think that this shit is already normalized
             vecset_d(C_lm, PT(l, m), c_integral);
             vecset_d(S_lm, PT(l, m), s_integral);
+
+            printf("Computed coefficients for (%d, %d)\n", l, m);
         }
     }
 }

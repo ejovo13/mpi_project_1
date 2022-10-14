@@ -20,15 +20,10 @@ iso_model *compute_model(int lmax, const char *filename, int n_theta, int n_phi)
 
     printf("[compute_model] Constructing model { lmax: %d, t: %d, p: %d}\n", lmax, n_theta, n_phi);
     data_iso *data = load_iso(filename, n_theta, n_phi);
-    spherical_model *model = newModel(data, lmax);
-    writeModel(model, data, "");    
+    iso_model *iso = newModel(data, lmax);
+    writeModel(iso->model, data, "");    
 
-    iso_model *out = (iso_model *) malloc(sizeof(*out));
-
-    out->data = data;
-    out->model = model;
-
-    return out;
+return iso;
 
     // print out some of the recorded data
     // printf("phi: \n");
@@ -75,7 +70,28 @@ iso_model *compute_model(int lmax, const char *filename, int n_theta, int n_phi)
 
 // const int nrows = (LMAX + 1) * (LMAX + 2) / 2;
 
+Matrix_d *modelPredictN(const iso_model *iso, int __n);
 
+// conversion functions from iso to project
+// project to wolfram
+double phip_to_thew(double phi) {
+    return (PI / 2) - phi;
+}
+
+double lamp_to_phiw(double lambda) {
+    if (lambda < 0) return lambda + TWO_PI;
+    return lambda;
+}
+
+double thew_to_phip(double theta) {
+    return (PI / 2) - theta;
+}
+
+double phiw_to_lamp(double phiw) {
+    if (phiw >= PI) return phiw - TWO_PI;
+    // return TWO_PI - phiw;
+    return phiw;
+}
 
 
 int main(int argc, char *argv[]) {
@@ -85,7 +101,19 @@ int main(int argc, char *argv[]) {
     // data_points_iso *data = load_data_points_iso("ETOPO1_small.csv", 64800);
     // int LMAX = 0;
     // if (argc >= 2) LMAX = 
-    
+    /**========================================================================
+     *!                           ETOPO1_unit.csv
+     *========================================================================**/
+    const char filename_u[] = "ETOPO1_unit.csv";
+    const int t_u = 6;
+    const int p_u = 12;
+
+    /**========================================================================
+     *!                           ETOPO1_tiny.csv
+     *========================================================================**/
+    const char filename_t[] = "ETOPO1_tiny.csv";
+    const int t_t = 18;
+    const int p_t = 36;
 
     /**========================================================================
      *!                           ETOPO1_small.csv
@@ -101,12 +129,62 @@ int main(int argc, char *argv[]) {
     const int t_m = 540;
     const int p_m = 1080;
 
-    iso_model *iso = compute_model(20, filename_s, t_s, p_s);
+    // iso_model *iso = compute_model(5, filename_s, 4, 5);
+    iso_model *iso = compute_model(4, filename_u, t_u, p_u);
+    // write_iso(iso->data, "iso.csv");
 
-    Matrix_print_d(iso->model->C_lm);
-    Matrix_print_d(iso->model->S_lm);
+    // int n = 10;
+
+    // print phi
+    Matrix_print_d(iso->data->ph);
+    // Matrix_print_d(map_d(iso->data->ph, phip_to_thew));
+
+    Matrix_d *copy = Matrix_clone_d(iso->data->ph);
+    apply_d(copy, phiw_to_lamp);
+    Matrix_print_d(copy);
+
+    printf("============== Predictions ===============\n");
+    Matrix_d *f_hat = modelPredictN(iso, t_u * p_u);
+    // Matrix_d *f_hat = modelPredictN(iso, 1);
+    reshape_d(f_hat, p_u, t_u);
+    for (int i = 0; i < t_u * p_u; i++) {
+
+        int i_ph = i / iso->data->t;
+        int i_th = i % iso->data->t;
+
+        printf("th: %lf\t ph: %lf f(th, ph) = %lf\t\t = f(ph, lam) = ph: %lf\t lam: %lf\n", 
+            vecat_d(iso->data->th, i_th), 
+            vecat_d(iso->data->ph, i_ph), 
+            vecat_d(f_hat, i), 
+            thew_to_phip(vecat_d(iso->data->th, i_th)),
+            phiw_to_lamp(vecat_d(iso->data->ph, i_ph)));
+            // vecat_d(iso->data->ph, i_ph));
+            // 5.0);
+            // vecat_d(iso->data->ph, i_ph));
+
+        // printf("%lf\t%lf\t%lf\n", vecat_d(iso->data->th, i_th) - )
+    }
+
+    // So I should have access to the full list of predicitons and the full list 
+    // of f
+    Matrix_print_d(iso->data->r);
+
+    // Matrix_print_d(iso->model->C_lm);
+    // Matrix_print_d(iso->model->S_lm);
 
     printf("MSE(iso) : %lf\n", compute_mse(iso));
+    printf("err(iso) : %lf\n", compute_average_error(iso));
+
+    printf("\t========================f_hat ====================\t\n"); Matrix_print_d(f_hat);
+    
+    // Coefficients of Clm and Slm
+    // printf("\t======================= C_lm := ===================\t\n");
+    // Matrix_print_d(iso->model->C_lm);
+    // printf("\t======================= S_lm := ===================\t\n");
+    // Matrix_print_d(iso->model->S_lm);
+
+    printf("P_lm_th: ");
+    Matrix_print_d(iso->model->P_lm_th);
     // compute_model(5, filename_s, 5, 10);
 }
 
@@ -235,8 +313,6 @@ Matrix_d *compute_mse_coeff(const data_iso *data, const spherical_model *model) 
 
     // for (int i = 0; i < data->N; i++) {
     for (int i = 0; i < data->N; i++) {
-    // for (int i = 0; i < 20; i++) {
-
 
         for (int l = 0; l <= lmax; l++) {
             // th changes every single cycle
@@ -244,27 +320,21 @@ Matrix_d *compute_mse_coeff(const data_iso *data, const spherical_model *model) 
 
                 int j = PT(l, m);
                  
-                int i_ph = index / data->p; // ph has floor division cycles
-                int i_th = index % data->t;
+                int i_ph = i / data->t; // ph has floor division cycles
+                int i_th = i % data->t;
                 
                 cosmph = cos(m * vecat_d(data->ph, i_ph));
                 sinmph = sin(m * vecat_d(data->ph, i_ph)); 
-                // cosmph = cos(m * data->ph[i_ph]); 
-                // sinmph = sin(m * data->ph[i_ph]); 
 
-                // C[i * ll + index] = P_lm_th->data[PLM(l, m, i_th, ll)] * cosmph;
-                // C[i * ll + index] = matat_d(P_lm_th, i, j) * cosmph;
-                // C[i * ll + index] = matat_d(P_lm_th, i, j) * cosmph;
-                *matacc_d(cs_mat, i, j)     = matat_d(model->P_lm_th, i_th, j) * cosmph;
-                *matacc_d(cs_mat, i + N, j) = matat_d(model->P_lm_th, i_th, j) * sinmph;
-                // matacc_d(C, )
-                // S[i * ll + index] = matat_d(P_lm_th, i, j) * sinmph;
+                *matacc_d(cs_mat, i, j)     = matat_d(model->P_lm_th, i_ph, i_th) * cosmph;
+                *matacc_d(cs_mat, i + N, j) = matat_d(model->P_lm_th, i_ph, i_th) * sinmph;
 
-                // printf ("C(%d, %d, %d) := %lf\n", l, m, i, C[i * ll + index]); 
                 // printf("(%d) Computed mse coefficients c(%d, %d)\n", i, l, m);
             }
         }
-        // printf("(%d) Computed mse coefficients\n", i);
+        // printf("(i = %d) clm_i = ", i);
+        // MatIter_print_d(Matrix_row_begin_d(cs_mat, i), Matrix_row_end_d(cs_mat, i));
+        
     }
 
     return cs_mat;
@@ -284,8 +354,8 @@ Matrix_d *compute_mse_coeff_clm(const data_iso *data, const spherical_model* mod
 
                 int j = PT(l, m);
                  
-                int i_ph = j / data->p; // ph has floor division cycles
-                int i_th = j % data->t;
+                int i_ph = i / data->t; // ph has floor division cycles
+                int i_th = i % data->t;
 
                 // printf("j: %d\n", j);
                 
@@ -311,8 +381,8 @@ Matrix_d *compute_mse_coeff_slm(const data_iso *data, const spherical_model* mod
 
                 int j = PT(l, m);
                  
-                int i_ph = j / data->p; // ph has floor division cycles
-                int i_th = j % data->t;
+                int i_ph = i / data->t; // ph has floor division cycles
+                int i_th = i % data->t;
                 
                 // sinmph = cos(m * data->ph[i_ph]); 
                 sinmph = sin(m * vecat_d(data->ph, i_ph)); 
@@ -429,76 +499,36 @@ double compute_mse(const iso_model *iso) {
 
     const int ll = (model->lmax + 1) * (model->lmax + 2) / 2;
 
-    // compute pcs
-    // double pcs;
-    Matrix_d *cs = compute_mse_coeff(data, model);
-    Matrix_d *clm = compute_mse_coeff_clm(data, model);
-
-    Matrix_d *c = compute_mse_coeff_clm(data, model);
-    Matrix_d *s = compute_mse_coeff_slm(data, model);
-    // double *c = cs->data;
-    // double *s = matacc_d(cs, 1, 0); // get pointer to second row
-
-    // double *pcs = compute_pcs(data, model, cs);
-
-
-    // compute the sum from i to N
-
     double sum = 0;
 
+    // Compute MSE by getting a list of predictions
+    const Matrix_d *predictions = modelPredictN(iso, iso->data->N);
+
+    // now compute the difference between the two
     for (int i = 0; i < data->N; i++) {
-
-        double inner = 0;
-
-        for (int l = 0; l <= model->lmax; l++) {
-            for (int m = 0; m <= l; m++) {
-
-                inner += model_C(model, l, m) * vecat_d(c, PT(l, m));
-                inner += model_S(model, l, m) * vecat_d(s, PT(l, m));
-            }
-        }
-
-        sum += (inner - vecat_d(data->r, i) * vecat_d(data->r, i));
+        double diff = vecat_d(predictions, i) - vecat_d(data->r, i);
+        sum += diff * diff;
     }
 
     return sum / data->N;
 }
 
-double compute_average_error(const data_iso *data, const spherical_model *model) {
+double compute_average_error(const iso_model *iso) {
+
+    const spherical_model *model = iso->model;
+    const data_iso        *data  = iso->data;
+
 
     const int ll = (model->lmax + 1) * (model->lmax + 2) / 2;
 
-    // compute pcs
-    // double pcs;
-    Matrix_d *cs = compute_mse_coeff(data, model);
-    double *c = matacc_d(cs, 0, 0);
-    double *s = matacc_d(cs, 1, 0);
-    // double *pcs = compute_pcs(data, model, cs);
-
-    // 
-
-    // compute the sum from i to N
     double sum = 0;
 
-    // for (int i = 0; i < data->N; i++) {
+    // Compute MSE by getting a list of predictions
+    const Matrix_d *predictions = modelPredictN(iso, iso->data->N);
+
+    // now compute the difference between the two
     for (int i = 0; i < data->N; i++) {
-
-        double inner = 0;
-
-        for (int l = 0; l <= model->lmax; l++) {
-            for (int m = 0; m <= l; m++) {
-
-                // printf("+ %lf\n", model->C_lm[PT(l, m)]);
-                inner += model_C(model, l, m) * c[PT(l, m)];
-                inner += model_S(model, l, m) * s[PT(l, m)];
-            }
-        }
-
-
-        // sum += (inner - data->r[i]) * (inner - data->r[i]);
-        // sum += (inner - data->r[i]);
-        sum += (inner - vecat_d(data->r, i));
-
+        sum += vecat_d(predictions, i) - vecat_d(data->r, i);
     }
 
     return sum / data->N;

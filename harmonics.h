@@ -85,8 +85,11 @@ typedef struct iso_model {
 
     data_iso *data;
     spherical_model * model;
+    struct spherical_harmonics *coeff;
 
 } iso_model;
+
+
 
 /* these 3 functions help compute indices in arrays containing
    triangular matrices */
@@ -139,12 +142,13 @@ double compute_mse(const iso_model *model);
 
 
 // What do I need to create a new model? A set of data and an lmax
-void modelComputePlm(spherical_model *model, const data_iso *data);
+void modelComputePlm(iso_model *model, const data_iso *data);
 void modelComputeCSlm(spherical_model *model, const data_iso *data);
-spherical_model *newModel(const data_iso *data, int lmax);
+// spherical_model *newModel(const data_iso *data, int lmax);
+iso_model *newModel(data_iso *data, int lmax);
 Matrix_d *compute_gradient(const data_iso *data, const spherical_model *model);
 void adjust_parameters(const data_iso *data, const Matrix_d *grad, spherical_model *model, double alpha);
-double compute_average_error(const data_iso *data, const spherical_model *model);
+double compute_average_error(const iso_model *iso);
 void writeModel(const spherical_model *model, const data_iso *data, const char *prefix);
 
 // Retrieve the value of P_l^m(cos \theta_i)
