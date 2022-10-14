@@ -3,9 +3,10 @@ LDLIBS = -lm -lgmp -lejovo
 CFLAGS = -Wall -g -O3 -Wno-unused-variable $(INC) -Werror
 
 
-ALL: model model_ejovo validate
+ALL: model model_ejovo validate reduce
 
 model: model.o harmonics.o
+reduce: reduce.o 
 model_ejovo: model_ejovo.o harmonics.o
 
 validate: validate.o harmonics.o 

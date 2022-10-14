@@ -3,3 +3,5 @@ test
 *.o
 model
 model_ejovo
+*.txt
+*.csv

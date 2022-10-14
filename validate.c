@@ -104,4 +104,5 @@ int main(int argc, char ** argv)
 	printf("Average error %g meters\n", error_l1 / npoint);
         printf("Max error %g meters\n", max_error);
 	printf("Standard Deviation %g\n", sqrt(error_l2 / npoint));
+    printf("npoints read: %d\n", npoint);
 }
