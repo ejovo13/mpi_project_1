@@ -60,8 +60,13 @@ void setup_spherical_harmonics(int lmax, struct spherical_harmonics *self)
 			double ms = m * m;
 			self->A[PT(l, m)] = sqrt((4 * ls - 1) / (ls - ms));
 			self->B[PT(l, m)] = -sqrt((lm1s - ms) / (4 * lm1s - 1));
+            // printf("P(%d, %d) -> %lf ", l, m, )
 		}
 	}
+
+    // print the computed values:
+
+
 }
 
 void load_data_points(const char *filename, int npoint, struct data_points *self)
@@ -167,7 +172,8 @@ void write_iso(const data_iso* data, const char *filename) {
     FILE *out = fopen(filename, "w");
 
     for (int i = 0; i < data->N; i++) {
-        fprintf(out, "%lf\t%lf\t%lf\n", data->th[i % data->t], data->ph[i / data->p], data->r[i]);
+        // fprintf(out, "%lf\t%lf\t%lf\n", data->th[i % data->t], data->ph[i / data->p], data->r[i]);
+        fprintf(out, "%lf\t%lf\t%lf\n", vecat_d(data->th, i % data->t), vecat_d(data->ph, i / data->p), vecat_d(data->r, i));
     }
 
     fclose(out);
@@ -223,6 +229,12 @@ void computeP(const struct spherical_harmonics *self, double *P, double sinphi)
 		temp = -sqrt(1.0 + 0.5 / l) * cosphi * temp;
 		P[PT(l, l)] = temp;
 	}
+
+    // for (int l = 0; l <= self->lmax; l++) {
+    //     for (int m = 0; m <= l; m++) {
+    //         printf("P(%d, %d) -> %lf ", l, m, P[PT(l, l - 1)]);
+    //     }
+    // }
 }
 
 double evaluate(const struct spherical_harmonics *self, const double *P, double lambda)
@@ -249,12 +261,163 @@ double evaluate(const struct spherical_harmonics *self, const double *P, double 
 	return V;
 }
 
+spherical_model *newModel(const data_iso *data, int lmax) {
+
+    if (lmax < 0) {
+        perror("Negative error passed into newModel, exiting\n");
+        exit(EXIT_FAILURE);
+    }
+
+    const int ll = (lmax + 1) * (lmax + 2) / 2;
+
+    spherical_model *model = (spherical_model *) malloc(sizeof(*model));
+
+    if (model == NULL) {
+        perror("Error allocating new model\n");
+        exit(EXIT_FAILURE);
+    }
+
+    model->C_lm    = NULL;
+    model->S_lm    = NULL;
+    model->P_lm_th = NULL;
+    model->pcs     = NULL;
+    model->clm     = NULL;
+    model->slm     = NULL;
+
+    model->ll = ll;
+    model->lmax = lmax;
+    model->C_lm    = Matrix_new_d(1, model->ll);
+    model->S_lm    = Matrix_new_d(1, model->ll);
+    model->P_lm_th = Matrix_new_d(data->t, model->ll);
+
+    // Now process the data to fill in the model    
+    // Initialize P_lm_th
+
+    // printf("th: [%lf, %lf]\tph: [%lf, %lf]\n", th_0, th_f, ph_0, ph_f);
+
+    // make sure data got loaded
+    printf("[newModel] New model successfully constructed\n");
+
+    printf("[newModel] Model: { .ll = %lu, .lmax = %lu}\n", model->ll, model->lmax);
+
+    printf("[newModel] Data:  { .N = %d, .t = %d, .p = %d}\n", data->N, data->t, data->p);
+
+
+    modelComputePlm(model, data);
+    printf("[newModel] Completed computing Plm\n");
+    modelComputeCSlm(model, data);
+    printf("[newModel] Completed computing CSlm\n");
+
+    return model;
+
+}
+
+void writeModel(const spherical_model *model, const data_iso *data, const char *prefix) {
+
+    const int ll = model->ll;
+
+    char fileout[100] = {0};
+
+    sprintf(fileout, "%smodel_%lu_%d_%d.txt", prefix, model->lmax, data->t, data->p);
+
+    //model_lmax_nth_nph.txt
+    printf("\nWriting data to file: %s\n\n", fileout);
+
+    FILE *out = fopen(fileout, "w");
+
+    for (int l = 0; l <= model->lmax; l++) {
+        for (int m = 0; m <= l; m++) {
+            fprintf(out, "%d\t%d\t%.15lf\t%.15lf\n", l, m, model->C_lm->data[PT(l, m)], model->S_lm->data[PT(l, m)]);
+        }
+    }
+
+    fclose(out);
+
+}
+
+void modelComputePlm(spherical_model *model, const data_iso *data) {
+
+    const int ll = model->ll;
+    Matrix_d *P_lm_th = Matrix_new_d(model->P_lm_th->nrows, model->P_lm_th->ncols);
+    Matrix_free_d(model->P_lm_th);
+    model->P_lm_th = P_lm_th;
+    
+
+    printf("[modelComputePlm] Setting up spherical harmonics with lmax: %lu\n", model->lmax);
+
+    struct spherical_harmonics sph_model; // used strictly to compute the P_lm_th matrix
+	setup_spherical_harmonics(model->lmax, &sph_model);
+
+    for (int i = 0; i < data->t; i++) { // store this data in a more compact matrix
+
+        // P is a big matrix who stores the information as (p00(th0) p10(th0) )
+        // printf("Processing i: %d, ptr: %p\n", i, matacc_d(model->P_lm_th, i, 0));
+		computeP(&sph_model, matacc_d(model->P_lm_th, i, 0), cos(vecat_d(data->th, i))); // should be mathematically equal to P(sin(phi_p)), angle named
+
+        // double sinth = sin(data->th[i]);
+        double sinth = sin(vecat_d(data->th, i));
+        for (int j = 0; j < ll; j++) {
+            *matacc_d(model->P_lm_th, i, j) *= sinth;
+        }
+    }
+
+    // Matrix_print_d(model->P_lm_th);
+}
+
+// Estimate the Laplace series coefficients Clm and Slm via numeric integration
+void modelComputeCSlm(spherical_model *model, const data_iso *data) {
+
+    const int lmax = model->lmax;
+    const int ll = model->ll;
+
+    Matrix_d *C_lm = model->C_lm, *S_lm = model->S_lm;
+
+
+    // Initialize integral values
+    double c_integral = 0;
+    double s_integral = 0;
+    int count = 0;
+
+    for (int l = 0; l <= lmax; l++) {
+
+        for (int m = 0; m <= l; m++) {
+
+            // Now that I have the Associated legendre functions and the data efficiently loaded, let's write
+            // the code to approximate the integrals
+            c_integral = 0;
+            s_integral = 0;
+
+            for (int j = 0; j < data->p; j++) {
+
+                double ph_j = vecat_d(data->ph, j);
+                double cos_mph = cos(m * ph_j);
+                double sin_mph = sin(m * ph_j);
+
+                for (int i = 0; i < data->t; i++) {
+
+                    c_integral += matat_d(data->r, i, j) * model_P(model, l, m, i) * cos_mph;
+                    s_integral += matat_d(data->r, i, j) * model_P(model, l, m, i) * sin_mph;
+
+                    count ++;
+                }
+            }
+
+            c_integral *= (data->dp * data->dt) / (TWO_PI);
+            s_integral *= (data->dp * data->dt) / (TWO_PI);
+
+            // But I actually think that this shit is already normalized
+            vecset_d(C_lm, PT(l, m), c_integral);
+            vecset_d(S_lm, PT(l, m), s_integral);
+        }
+    }
+}
+
 data_iso *load_iso(const char *filename, int t, int p) {
 
     data_iso *data = (data_iso *) malloc(sizeof(*data));
     if (!data) err(1, "Cannot allocate data points structure");
 
-    printf("Opening %s\n", filename);
+    printf("[load_iso] Opening %s\n", filename);
 
     const double d_th = PI / t; 
     const double d_ph = TWO_PI / p;
@@ -262,35 +425,53 @@ data_iso *load_iso(const char *filename, int t, int p) {
 	data->N = t * p;
     data->p = p;
     data->t = t;
+    data->dt = d_th;
+    data->dp = d_ph;
 
     // Create the data object matrix
-    data->th = (double *) malloc(sizeof(*data->th) * t); 
-    data->ph = (double *) malloc(sizeof(*data->ph) * p);
-	data->r  = malloc(data->N * sizeof(double));
+    data->th = Matrix_new_d(1, t);
+    data->ph = Matrix_new_d(1, p);
+    data->r  = Matrix_new_d(p, t); 
 
-    printf("Trying to read %d elements\n", data->N);
+    // shorthand aliases:
+    Matrix_d *th = data->th, *ph = data->ph, *r = data->r;
 
-	if (data->th == NULL || data->ph == NULL || data->r == NULL)
+
+    // data->th = (double *) malloc(sizeof(*data->th) * t); 
+    // data->ph = (double *) malloc(sizeof(*data->ph) * p);
+	// data->r  = malloc(data->N * sizeof(double));
+
+    printf("[load_iso] Trying to read %d elements\n", data->N);
+
+	if (th == NULL || ph == NULL || r == NULL)
 		err(1, "cannot allocate data points\n");
     
 
     // fill theta matrix
-    data->th[0] = 0;
+    // data->th[0] = 0;
+    vecset_d(th, 0, 0);
+    
+    // vecset
     for (int i = 1; i < t; i++) {
-        data->th[i] = data->th[i - 1] + d_th;
+        // data->th[i] = data->th->data[i - 1] + d_th;
+        // vecset_d(th, i, vecat_d(th, i - 1) + d_th);
+        *vecptr_d(th, i) = vecat_d(th, i - 1) + d_th;
+        // data->data
     }
 
     // fill phi array 
-    data->ph[0] = PI;
+    // data->ph[0] = PI;
+    vecset_d(ph, 0, PI);
     for (int i = 1; i < p / 2; i++) {
-        data->ph[i] = data->ph[i - 1] + d_ph;
+        // data->ph[i] = data->ph->data[i - 1] + d_ph;
+        *vecptr_d(ph, i) = vecat_d(ph, i - 1) + d_ph;
     }
-    data->ph[p / 2] = 0.0;
+    // data->ph[p / 2] = 0.0;
+    vecset_d(ph, p / 2, 0.0);
     for (int i = (p / 2) + 1; i < p; i++) {
-        data->ph[i] = data->ph[i - 1] + d_ph;
+        // data->ph[i] = data->ph->data[i - 1] + d_ph;
+        *vecptr_d(ph, i) = vecat_d(ph, i - 1) + d_ph;
     }
-
-
 
 	FILE *f = fopen(filename, "r");
 	if (f == NULL)
@@ -306,8 +487,8 @@ data_iso *load_iso(const char *filename, int t, int p) {
 		// int k = fscanf(f, "%lg %lg %lg", &data->lambda[i], &data->phi[i], &data->V[i]);
 		int k = fscanf(f, "%lg %lg %lg", &p_lambda, &p_phi, &p_val);
 
-        data->r[i] = p_val;
-        // printf("stored: %lf", data->r[i]);
+        // data->r[i] = p_val;
+        vecset_d(r, i, p_val);
         count++;
 
 		if (k == EOF) {
@@ -320,16 +501,8 @@ data_iso *load_iso(const char *filename, int t, int p) {
 	}
 	fclose(f);
 
-    printf("Read %d lines\n", count);
+    printf("[load_iso] Read %d lines\n", count);
 
     return data;
-
-
-
-
-
-
-    return data;
-
 
 }

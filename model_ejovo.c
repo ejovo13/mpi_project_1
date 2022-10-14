@@ -3,35 +3,12 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "ejovo.h"
 #include "harmonics.h"
 #include "gmp.h"
 
 #define LMAX 50
 
-// compute the coefficient using the gmp multi-precision library
-// mpf_t compute_scale(int l, int m) {
-
-#include "ejovo.h"
-
-
-
-
-double compute_mse(const data_iso *data, const spherical_model *model);
-double *compute_gradient(const data_iso *data, const spherical_model *model);
-void adjust_parameters(const data_iso *data, const double *grad, spherical_model *model, double alpha);
-double compute_average_error(const data_iso *data, const spherical_model *model);
-// double compute_gradient_slm(const data_iso *data, const spherical_model *model, const double *s, const double *pcs, int l, int m);
-// double compute_gradient_clm(const data_iso *data, const spherical_model *model, const double *c, const double *pcs, int l, int m);
-// double *compute_pcs(const data_iso *data, const spherical_model *model, const double *cs);
-
-
-
-// }
-
-static inline int PLM(int l, int m, int th, int nrows) {
-    int index = PT(l, m);
-    return th * nrows + index; 
-}
 
 // Given an lmax, compute the values of C_lm and S_lm and return the values
 // in a Vector of the form
@@ -39,197 +16,60 @@ static inline int PLM(int l, int m, int th, int nrows) {
 //  Coeff = [ C_lm S_lm ]
 //
 // where the length of Coeff is 2 * (lmax + 1) * (lmax + 2) / 2
-void compute_model(int lmax, const char *filename, int n_theta, int n_phi) {
+iso_model *compute_model(int lmax, const char *filename, int n_theta, int n_phi) {
 
-    const double th_0 = 0;
-    const double th_f = PI;
-    const double ph_0 = 0;
-    const double ph_f = TWO_PI;
-    const int nrows = (lmax + 1) * (lmax + 2) / 2;
-
-    // allocate the coeffient matrices
-    double *CS_lm   = (double *) malloc(sizeof(*CS_lm) * 2 * nrows);
-    double *P_lm_th = (double *) malloc(sizeof(*P_lm_th) * nrows * n_theta);
-
-    double *C_lm = CS_lm;
-    double *S_lm = &CS_lm[nrows]; 
-
-    const double d_th = (th_f - th_0) / n_theta;
-    const double d_ph = (ph_f - ph_0) / n_phi;
-
-    // Load data
+    printf("[compute_model] Constructing model { lmax: %d, t: %d, p: %d}\n", lmax, n_theta, n_phi);
     data_iso *data = load_iso(filename, n_theta, n_phi);
+    spherical_model *model = newModel(data, lmax);
+    writeModel(model, data, "");    
 
-    // // print the theta vector
-    // printf("{");
-    // for (int i = 0; i < n_theta - 1; i++) {
-    //     printf("%lf, ", data->th[i]);
-    // }
-    // printf("%lf}\n", data->th[n_theta - 1]);
+    iso_model *out = (iso_model *) malloc(sizeof(*out));
 
-    // printf("==================================\n");
+    out->data = data;
+    out->model = model;
 
-    // // print phi
-    // printf("{");
-    // for (int i = 0; i < n_phi - 1; i++) {
-    //     printf("%lf, ", data->ph[i]);
-    // }
-    // printf("%lf}\n", data->ph[n_phi - 1]);
+    return out;
 
+    // print out some of the recorded data
+    // printf("phi: \n");
+    // Matrix_print_d(data->ph);
 
-
-    // Initialize P_lm computation coefficients
-    struct spherical_harmonics model;
-	setup_spherical_harmonics(lmax, &model);
-
-    printf("th: [%lf, %lf]\tph: [%lf, %lf]\n", th_0, th_f, ph_0, ph_f);
-
-    // make sure data got loaded
-    printf("Data: {.N = %d, .t = %d, .p = %d}", data->N, data->t, data->p);
-
-	for (int i = 0; i < n_theta; i++) { // store this data in a more compact matrix
-
-        // P is a big matrix who stores the information as (p00(th0) p10(th0) )
-		computeP(&model, &P_lm_th[i * nrows], cos(data->th[i])); // should be mathematically equal to P(sin(phi_p)), angle named
-		// computeP(&model, &P_lm_th[i * nrows], sin(data->th[i])); // should be mathematically equal to P(sin(phi_p)), angle named
-                                               // phi in the project
-
-        // multiply by sin(phi) 
-        for (int j = 0; j < nrows; j++) {
-            P_lm_th[i * nrows + j] *= sin(data->th[i]);
-            // P_lm_th[i * nrows + j] *= cos(data->th[i]);
-        } 
-    }
-
-    double c_integral = 0;
-    double s_integral = 0;
-    int count = 0;
-
-    for (int l = 0; l <= lmax; l++) {
-
-        for (int m = 0; m <= l; m++) {
-
-            // Now that I have the Associated legendre functions and the data efficiently loaded, let's write
-            // the code to approximate the integrals
-            c_integral = 0;
-            s_integral = 0;
-
-            for (int j = 0; j < data->p; j++) {
-
-                double ph_j = data->ph[j];
-                double cos_mph = cos(m * ph_j);
-                double sin_mph = sin(m * ph_j);
-
-                for (int i = 0; i < data->t; i++) {
-
-                    c_integral += data->r[j * data->t + i] * P_lm_th[PLM(l, m, i, nrows)] * cos_mph;
-                    s_integral += data->r[j * data->t + i] * P_lm_th[PLM(l, m, i, nrows)] * sin_mph;
-
-                    count ++;
-                }
-            }
-
-            // printf("===========================\n");
-            c_integral *= (d_ph * d_th) / (TWO_PI);
-            // c_integral *= (d_ph * d_th) / (PI);
-            s_integral *= (d_ph * d_th) / (TWO_PI);
-            // s_integral *= (d_ph * d_th) / (PI);
+    // printf("theta: \n");
+    // Matrix_print_d(data->th);
 
 
-            // But I actually think that this shit is already normalized
-            C_lm[PT(l, m)] = c_integral;
-            S_lm[PT(l, m)] = s_integral;
 
-        }
-    }
-
-    // output C_lm and S_lm to a file
-    // const char filename[] = "ejovo50.txt";
-
-    char file_out[100] = {0};
-
-    //model_lmax_nth_nph.txt
-    sprintf(file_out, "model_%d_%d_%d.txt", lmax, n_theta, n_phi);
-
-    printf("\nWriting data to file: %s\n\n", file_out);
-
-    FILE *out = fopen(file_out, "w");
-
-    for (int l = 0; l <= lmax; l++) {
-        for (int m = 0; m <= l; m++) {
-            fprintf(out, "%d\t%d\t%.15lf\t%.15lf\n", l, m, C_lm[PT(l, m)], S_lm[PT(l, m)]);
-        }
-    }
-
-    fclose(out);
+    // // Calculate the MSE using sph_mod.
+    // double mse = compute_mse(data, model);
 
 
-    /**========================================================================
-     *!                           Optimization 
-     *========================================================================**/
-    // Now that we've computed C_lm and S_lm, let's go ahead and store them in a model object.
-    spherical_model sph_mod = {
 
-        .lmax = model.lmax,
-        .C_lm = C_lm,
-        .S_lm = S_lm,
-        .P_lm_th = P_lm_th
+    // printf("mse: %lf\n", mse);
 
-    };
+    // // Let's try and adjust the parameters
+    // double start_average_error = compute_average_error(data, model);
+    // double start_mse = compute_mse(data, model);
 
-    // Calculate the MSE using sph_mod.
 
-    double mse = compute_mse(data, &sph_mod);
+    // for (int i = 0; i < 100; i++) {
 
-    printf("mse: %lf\n", mse);
+    //     Matrix_d *grad = compute_gradient(data, model);
 
-    // Let's get wild and compute the gradient
+    //     // normalize the gradient
 
-    // double *grad = compute_gradient(data, &sph_mod);
+    //     adjust_parameters(data, grad, model, 0.000005);
+    //     printf("mse: %lf\n", compute_mse(data, model));
 
-    // what's the gradient look like?
-
-    // for (int l = 0; l <= lmax; l++) {
-    //     for (int m = 0; m <= l; m++) {
-    //         printf("gradC(%d, %d) := %lf\n", l, m, grad[PT(l, m)]);
-    //     }
+    //     free(grad);
     // }
 
-    //
+    // double end_average_error = compute_average_error(data, model); 
+    // double end_mse = compute_mse(data, model); 
 
-    // Let's try and adjust the parameters
-    double start_average_error = compute_average_error(data, &sph_mod);
-    double start_mse = compute_mse(data, &sph_mod);
+    // printf("err_0 := %lf -> err_f := %lf\n", start_average_error, end_average_error);
+    // printf("mse_0 := %lf -> mse_f := %lf\n", start_mse, end_mse);
 
-
-    for (int i = 0; i < 100; i++) {
-
-        double *grad = compute_gradient(data, &sph_mod);
-        adjust_parameters(data, grad, &sph_mod, 0.000005);
-        printf("mse: %lf\n", compute_mse(data, &sph_mod));
-
-        free(grad);
-    }
-
-    double end_average_error = compute_average_error(data, &sph_mod); 
-    double end_mse = compute_mse(data, &sph_mod); 
-
-    printf("err_0 := %lf -> err_f := %lf\n", start_average_error, end_average_error);
-    printf("mse_0 := %lf -> mse_f := %lf\n", start_mse, end_mse);
-
-    sprintf(file_out, "adjusted_model_%d_%d_%d.txt", lmax, n_theta, n_phi);
-
-    printf("\nWriting data to file: %s\n\n", file_out);
-
-    out = fopen(file_out, "w");
-
-    for (int l = 0; l <= lmax; l++) {
-        for (int m = 0; m <= l; m++) {
-            fprintf(out, "%d\t%d\t%.15lf\t%.15lf\n", l, m, sph_mod.C_lm[PT(l, m)], sph_mod.S_lm[PT(l, m)]);
-        }
-    }
-    
-    fclose(out);
+    // writeModel(model, data, "optimised");
 
 }
 
@@ -261,78 +101,13 @@ int main(int argc, char *argv[]) {
     const int t_m = 540;
     const int p_m = 1080;
 
-    // Now create an interface for the function that computes 
-    // int lmax = 10;
+    iso_model *iso = compute_model(20, filename_s, t_s, p_s);
 
-    // compute_model(lmax, filename_m, t_m, p_m); 
+    Matrix_print_d(iso->model->C_lm);
+    Matrix_print_d(iso->model->S_lm);
 
-    // for (int l = 0; l < lmax; l++) {
-        // compute_model(l, filename_s, t_s, p_s);
-    // }
-    // int l = 200;
-
-    compute_model(5, filename_s, t_s, p_s);
-    // compute_model(20, filename_m, t_m, p_m);
-
-    // printf("Computing factorial:\n");
-
-    // mpz_t x, y;
-    // int f = 100;
-
-    // mpz_init_set_ui(x, f);
-    // mpz_init(y);
-    // mpz_factorial(y, x);
-
-    // gmp_printf("%d! = %.Zd\n", f, y);
-
-    // printf("}\n");
-
-    // // print the matrix (at least the first 10 elements)
-    // for (int i = 0; i < nrows; i++) {
-    //     printf("| ");
-    //     for (int j = 0; j < t; j++) {
-    //         printf("%7.3lf ", P_lm_th[j * nrows + i]);
-    //         // printf("%7.3lf ", P_lm_th[]);
-    //     }
-    //     printf("|\n");
-    // }
-
-    // printf("=============================\n");
-
-    // for (int l = 0; l <= LMAX; l++) {
-    //     for (int m = 0; m <= l; m++) {
-
-    //         printf("(%d, %d) ", l, m);
-    //         printf("| ");
-    //         for (int j = 0; j < t; j++) {
-    //             printf("%7.3lf ", P_lm_th[PLM(l, m, j)]);
-    //             // printf("%7.3lf ", P_lm_th[]);
-    //         }
-    //         printf("|\n");
-    //     }
-    // }
-
-    // write_iso(data, "iso2.csv");
-
-    // for a given l, let's compute the denominator
-    // int l = 17;
-    // mpz_t den;
-    // mpz_init(den);
-
-    // for (int m = 0; m <= l; m++) {
-
-    //     mpz_compute_denom(den, l, m);
-    //     gmp_printf("den(%d, %d) = %Zd\n", l, m, den);
-
-
-
-    // }
-
-    // Now just compute the factorial coefficient
-    // for (int m = 0; m <= l; m++) {
-    //     printf("Coeff(%d, %d): %lf\n", l, m, factorial_coeff(l, m));
-    // }
-
+    printf("MSE(iso) : %lf\n", compute_mse(iso));
+    // compute_model(5, filename_s, 5, 10);
 }
 
 /**========================================================================
@@ -438,20 +213,28 @@ double factorial_coeff(int l, int m) {
 //  [ .        .      . ](.)
 //  [s00             slm](i)]
 //
-double *compute_mse_coeff(const data_iso *data, const double *P_lm_th, int lmax) {
+Matrix_d *compute_mse_coeff(const data_iso *data, const spherical_model *model) {
 
-    const int ll = (lmax + 1) * (lmax + 2) / 2;
+    // const int lmax = Matrix_size_d(P_lm_th);
+    // const int 
+    // const int ll = (lmax + 1) * (lmax + 2) / 2;
+    const int ll = model->ll;
+    const int lmax = model->lmax;
 
-    double *CS = (double *) malloc(sizeof(*CS) * 2 * ll * data->N); // start off using full sized array
-    double *C = CS;
-    double *S = &CS[ll * data->N]; // halway point
 
-    int index;
-    double cosmph;
-    double sinmph;
+
+    // double *CS = (double *) malloc(sizeof(*CS) * 2 * ll * data->N); // start off using full sized array
+    Matrix_d *cs_mat = Matrix_new_d(data->N * 2, ll);
+    double *C = cs_mat->data;
+    // double *S = matacc_d(cs_mat, 1, 0); // halfway point
+
+    int index = 0;;
+    double cosmph = 0;
+    double sinmph = 0;
+    const int N = data->N;
 
     // for (int i = 0; i < data->N; i++) {
-    for (int i = 0; i < 300; i++) {
+    for (int i = 0; i < data->N; i++) {
     // for (int i = 0; i < 20; i++) {
 
 
@@ -459,41 +242,96 @@ double *compute_mse_coeff(const data_iso *data, const double *P_lm_th, int lmax)
             // th changes every single cycle
             for (int m = 0; m <= l; m++) {
 
-                index = PT(l, m);
+                int j = PT(l, m);
                  
-
                 int i_ph = index / data->p; // ph has floor division cycles
                 int i_th = index % data->t;
                 
-                cosmph = cos(m * data->ph[i_ph]); 
-                sinmph = sin(m * data->ph[i_ph]); 
+                cosmph = cos(m * vecat_d(data->ph, i_ph));
+                sinmph = sin(m * vecat_d(data->ph, i_ph)); 
+                // cosmph = cos(m * data->ph[i_ph]); 
+                // sinmph = sin(m * data->ph[i_ph]); 
 
-                C[i * ll + index] = P_lm_th[PLM(l, m, i_th, ll)] * cosmph;
-                S[i * ll + index] = P_lm_th[PLM(l, m, i_th, ll)] * sinmph;
+                // C[i * ll + index] = P_lm_th->data[PLM(l, m, i_th, ll)] * cosmph;
+                // C[i * ll + index] = matat_d(P_lm_th, i, j) * cosmph;
+                // C[i * ll + index] = matat_d(P_lm_th, i, j) * cosmph;
+                *matacc_d(cs_mat, i, j)     = matat_d(model->P_lm_th, i_th, j) * cosmph;
+                *matacc_d(cs_mat, i + N, j) = matat_d(model->P_lm_th, i_th, j) * sinmph;
+                // matacc_d(C, )
+                // S[i * ll + index] = matat_d(P_lm_th, i, j) * sinmph;
 
                 // printf ("C(%d, %d, %d) := %lf\n", l, m, i, C[i * ll + index]); 
+                // printf("(%d) Computed mse coefficients c(%d, %d)\n", i, l, m);
             }
         }
-        // printf("(%d) Computed mse coefficients c(%d, %d)\n", i, l, m);
         // printf("(%d) Computed mse coefficients\n", i);
     }
 
-    return CS;
+    return cs_mat;
 }
 
+Matrix_d *compute_mse_coeff_clm(const data_iso *data, const spherical_model* model) {
+
+    Matrix_d *clm = Matrix_new_d(data->N, model->ll);
+    double cosmph = 0;
+
+    printf("lmax: %lu\n", model->lmax);
+
+    for (int i = 0; i < data->N; i++) {
+        for (int l = 0; l <= model->lmax; l++) {
+            // th changes every single cycle
+            for (int m = 0; m <= l; m++) {
+
+                int j = PT(l, m);
+                 
+                int i_ph = j / data->p; // ph has floor division cycles
+                int i_th = j % data->t;
+
+                // printf("j: %d\n", j);
+                
+                // cosmph = cos(m * data->ph[i_ph]); 
+                cosmph = cos(m * vecat_d(data->ph, i_ph)); 
+                *matacc_d(clm, i, j)     = matat_d(model->P_lm_th, i_th, j) * cosmph;
+            }
+        }
+    }
+
+    return clm;
+}
+
+Matrix_d *compute_mse_coeff_slm(const data_iso *data, const spherical_model* model) {
+
+    Matrix_d *slm = Matrix_new_d(data->N, model->ll);
+    double sinmph = 0;
+
+    for (int i = 0; i < data->N; i++) {
+        for (int l = 0; l <= model->lmax; l++) {
+            // th changes every single cycle
+            for (int m = 0; m <= l; m++) {
+
+                int j = PT(l, m);
+                 
+                int i_ph = j / data->p; // ph has floor division cycles
+                int i_th = j % data->t;
+                
+                // sinmph = cos(m * data->ph[i_ph]); 
+                sinmph = sin(m * vecat_d(data->ph, i_ph)); 
+                *matacc_d(slm, i, j)     = matat_d(model->P_lm_th, i_th, j) * sinmph;
+            }
+        }
+    }
+
+    return slm;
+}
+
+
 // O(lmax^2)
-double compute_pcs_i(const data_iso *data, const spherical_model *model, const double *cs, int i) {
+double compute_pcs_i(const data_iso *data, const spherical_model *model, const Matrix_d *clm, const Matrix_d *slm, int i) {
 
     const int ll = (model->lmax + 1) * (model->lmax + 2) / 2;
 
-    // for i in {1..N} compute PCS_i 
-    const double *c = cs;
-    const double *s = &cs[ll * data->N]; // halfway point
-
- 
     // I already have the values of c_li^m and s_li^m, just need to
     // combine them with the parameters of my model
-
     double sum = 0;
 
     for (int l = 0; l <= model->lmax; l++) {
@@ -501,54 +339,51 @@ double compute_pcs_i(const data_iso *data, const spherical_model *model, const d
 
             int index = PT(l, m);
 
-            sum += model->C_lm[index] * c[i * ll + index];
-            sum += model->S_lm[index] * s[i * ll + index];
-
+            sum += model_C(model, l, m) * matat_d(clm, i, index);
+            sum += model_S(model, l, m) * matat_d(slm, i, index);
         }
     }
 
     return sum;
 }
 
-double *compute_pcs(const data_iso *data, const spherical_model *model, const double *cs) {
+Matrix_d *compute_pcs(const data_iso *data, const spherical_model *model, const Matrix_d *clm, const Matrix_d *slm) {
 
     // Pcs will simply have length data->N
-    double * pcs = (double *) malloc(sizeof(*pcs) * data->N);
+    // double * pcs = (double *) malloc(sizeof(*pcs) * data->N);
+    Matrix_d *pcs_mat = Matrix_new_d(1, data->N);
 
+    // for i in {1..N} compute PCS_i 
     for (int i = 0; i < data->N; i++) {
-        pcs[i] = compute_pcs_i(data, model, cs, i);
+        pcs_mat->data[i] = compute_pcs_i(data, model, clm, slm, i);
     }
 
-    return pcs;
+    return pcs_mat;
 }
 
-double compute_gradient_clm(const data_iso *data, const spherical_model *model, const double *c, const double *pcs, int l, int m) {
-
-    const int ll = (model->lmax + 1) * (model->lmax + 2) / 2;
+double compute_gradient_clm(const data_iso *data, const spherical_model *model, const Matrix_d *clm, const Matrix_d *pcs, int l, int m) {
 
     double sum = 0;
 
     for (int i = 0; i < data->N; i++) {
 
-        double clmi = c[PT(l, m) + i * ll];
-        sum += 2 * clmi * pcs[i] - 2 * clmi * data->r[i];
-
+        double clmi = matat_d(clm, i, PT(l, m));
+        sum += 2 * clmi * pcs->data[i] - 2 * clmi * vecat_d(data->r, i);
     }
 
     return sum;
 }
 
-double compute_gradient_slm(const data_iso *data, const spherical_model *model, const double *s, const double *pcs, int l, int m) {
+double compute_gradient_slm(const data_iso *data, const spherical_model *model, const Matrix_d *slm, const Matrix_d *pcs, int l, int m) {
 
-    const int ll = (model->lmax + 1) * (model->lmax + 2) / 2;
 
     double sum = 0;
 
     for (int i = 0; i < data->N; i++) {
 
-        double slmi = s[PT(l, m) + i * ll];
-        sum += 2 * slmi * pcs[i] - 2 * slmi * data->r[i];
-
+        double slmi = matat_d(slm, i, PT(l, m));
+        // sum += 2 * slmi * pcs->data[i] - 2 * slmi * data->r[i];
+        sum += 2 * slmi * pcs->data[i] - 2 * slmi * vecat_d(data->r, i);
     }
 
     return sum;
@@ -558,54 +393,59 @@ double compute_gradient_slm(const data_iso *data, const spherical_model *model, 
 // [dMSE/dc00 dMSE/dc10 ... dMSE/dclm
 //  dMSE/ds00 dMSE/ds10 ... dMSE/dslm]
 // Assume model has C_lm and S_lm and P_lm_th
-double *compute_gradient(const data_iso *data, const spherical_model *model) {
+Matrix_d *compute_gradient(const data_iso *data, const spherical_model *model) {
 
     const int ll = (model->lmax + 1) * (model->lmax + 2) / 2;
 
-    const double *cs  = compute_mse_coeff(data, model->P_lm_th, model->lmax);
-    const double *pcs = compute_pcs(data, model, cs);
-
-    const double *c = cs;
-    const double *s = &cs[ll * data->N];
+    const Matrix_d *clm  = compute_mse_coeff_clm(data, model); // 2 x ll matrix
+    const Matrix_d *slm  = compute_mse_coeff_slm(data, model); // 2 x ll matrix
+    const Matrix_d *pcs = compute_pcs(data, model, clm, slm); // sum(clm * Plmcos * cos)_i for i in 1..N
 
     // allocate space for output array
 
-    double *grad = (double *) malloc(sizeof(*grad) * 2 * ll);
+    // double *grad = (double *) malloc(sizeof(*grad) * 2 * ll);
+    Matrix_d *grad = Matrix_new_d(2, ll);
 
     for (int l = 0; l <= model->lmax; l++) {
         for (int m = 0; m <= l; m++) {
 
-            grad[PT(l, m)] = compute_gradient_clm(data, model, c, pcs, l, m);
-            grad[PT(l, m) + ll] = compute_gradient_slm(data, model, s, pcs, l, m);
+            grad->data[PT(l, m)] = compute_gradient_clm(data, model, clm, pcs, l, m);
+            grad->data[PT(l, m) + ll] = compute_gradient_slm(data, model, slm, pcs, l, m);
 
         }
     }
 
     return grad;
-
 }
 
+
+
 // Assume that a model object has been fully initialized
-double compute_mse(const data_iso *data, const spherical_model *model) {
+double compute_mse(const iso_model *iso) {
+
+    const spherical_model *model = iso->model;
+    const data_iso        *data  = iso->data;
+
 
     const int ll = (model->lmax + 1) * (model->lmax + 2) / 2;
 
     // compute pcs
     // double pcs;
-    double *cs = compute_mse_coeff(data, model->P_lm_th, model->lmax);
-    double *c = cs;
-    double *s = &cs[ll * data->N];
+    Matrix_d *cs = compute_mse_coeff(data, model);
+    Matrix_d *clm = compute_mse_coeff_clm(data, model);
+
+    Matrix_d *c = compute_mse_coeff_clm(data, model);
+    Matrix_d *s = compute_mse_coeff_slm(data, model);
+    // double *c = cs->data;
+    // double *s = matacc_d(cs, 1, 0); // get pointer to second row
+
     // double *pcs = compute_pcs(data, model, cs);
 
-    // 
 
     // compute the sum from i to N
 
-
-
     double sum = 0;
 
-    // for (int i = 0; i < data->N; i++) {
     for (int i = 0; i < data->N; i++) {
 
         double inner = 0;
@@ -613,16 +453,12 @@ double compute_mse(const data_iso *data, const spherical_model *model) {
         for (int l = 0; l <= model->lmax; l++) {
             for (int m = 0; m <= l; m++) {
 
-                // printf("+ %lf\n", model->C_lm[PT(l, m)]);
-                inner += model->C_lm[PT(l, m)] * c[PT(l, m)];
-                inner += model->S_lm[PT(l, m)] * s[PT(l, m)];
+                inner += model_C(model, l, m) * vecat_d(c, PT(l, m));
+                inner += model_S(model, l, m) * vecat_d(s, PT(l, m));
             }
         }
 
-
-        sum += (inner - data->r[i]) * (inner - data->r[i]);
-        // sum += (inner - data->r[i]);
-
+        sum += (inner - vecat_d(data->r, i) * vecat_d(data->r, i));
     }
 
     return sum / data->N;
@@ -634,17 +470,14 @@ double compute_average_error(const data_iso *data, const spherical_model *model)
 
     // compute pcs
     // double pcs;
-    double *cs = compute_mse_coeff(data, model->P_lm_th, model->lmax);
-    double *c = cs;
-    double *s = &cs[ll * data->N];
+    Matrix_d *cs = compute_mse_coeff(data, model);
+    double *c = matacc_d(cs, 0, 0);
+    double *s = matacc_d(cs, 1, 0);
     // double *pcs = compute_pcs(data, model, cs);
 
     // 
 
     // compute the sum from i to N
-
-
-
     double sum = 0;
 
     // for (int i = 0; i < data->N; i++) {
@@ -656,14 +489,15 @@ double compute_average_error(const data_iso *data, const spherical_model *model)
             for (int m = 0; m <= l; m++) {
 
                 // printf("+ %lf\n", model->C_lm[PT(l, m)]);
-                inner += model->C_lm[PT(l, m)] * c[PT(l, m)];
-                inner += model->S_lm[PT(l, m)] * s[PT(l, m)];
+                inner += model_C(model, l, m) * c[PT(l, m)];
+                inner += model_S(model, l, m) * s[PT(l, m)];
             }
         }
 
 
         // sum += (inner - data->r[i]) * (inner - data->r[i]);
-        sum += (inner - data->r[i]);
+        // sum += (inner - data->r[i]);
+        sum += (inner - vecat_d(data->r, i));
 
     }
 
@@ -673,22 +507,33 @@ double compute_average_error(const data_iso *data, const spherical_model *model)
 // Given a gradient matrix and a model, tweak the values of 
 // C_lm to improve the score
 // gradient has size (N * 2) x ((lmax + 1)(lmax + 2)/2)
-void adjust_parameters(const data_iso *data, const double *grad, spherical_model *model, double alpha) {
+void adjust_parameters(const data_iso *data, const Matrix_d *grad, spherical_model *model, double alpha) {
 
     const int ll = (model->lmax + 1) * (model->lmax + 2) / 2;
 
+    // create a scaled version of the gradient vector (not necessary, but since the gradient vector should 
+    // be reasonably small, we can perform this operation with very little cost)
+    Matrix_d *grad_scaled = Matrix_clone_d(grad); // FAST memory copy
+    Matrix_mult_scalar_d(grad_scaled, alpha); // Just multiply the first row
+    // Matrix_mult_k
+
     // loop through the gradient matrix and adjust the model
-    const double *grad_c = grad;
-    const double *grad_s = &grad[ll];
 
-    for (int l = 0; l <= model->lmax; l++) {
-        for (int m = 0; m <= l; m++) {
+    // matadd_d(model->)
+    MatIter_row_add_row_d(Matrix_row_begin_d(model->C_lm, 0), 
+                          Matrix_row_end_d(model->C_lm, 0), 
+                          Matrix_row_begin_d(grad_scaled, 0));
 
-            // printf ("C(%d, %d): %lf\n", l, m, model->C_lm[PT(l, m)]);
+    MatIter_row_add_row_d(Matrix_row_begin_d(model->S_lm, 0),
+                          Matrix_row_end_d(model->S_lm, 0),
+                          Matrix_row_begin_d(grad_scaled, 1));
+   
+    // for (int l = 0; l <= model->lmax; l++) {
+    //     for (int m = 0; m <= l; m++) {
 
-
-           model->C_lm[PT(l, m)] += -alpha * grad_c[PT(l, m)];
-           model->S_lm[PT(l, m)] += -alpha * grad_s[PT(l, m)];
-        }
-    }
+    //         // printf ("C(%d, %d): %lf\n", l, m, model->C_lm[PT(l, m)]);
+    //        model_C_plus(model, l, m, -alpha * matat_d(grad, 0, PT(l, m))) -alpha * matat_d(grad, 0, PT(l, m));
+    //        model_S(model, l, m) += -alpha * matat_d(grad, 1, PT(l, m));
+    //     }
+    // }
 }
