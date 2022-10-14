@@ -3,5 +3,8 @@ test
 *.o
 model
 model_ejovo
+reduce
+validate
+.vscode
 *.txt
 *.csv
