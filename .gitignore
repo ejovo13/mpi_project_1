@@ -9,3 +9,5 @@ validate
 *.txt
 *.csv
 *.png
+build
+release

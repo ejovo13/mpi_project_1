@@ -1,0 +1,3 @@
+[submodule "lib/libejovo"]
+	path = lib/libejovo
+	url = git@github.com:ejovo13/libejovo.git
