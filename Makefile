@@ -1,6 +1,6 @@
 INC = -I/usr/local/include/ejovo -I/usr/local/include/ejovo/matrix
-LDLIBS = -lm -lgmp -lejovo
-CFLAGS = -Wall -g -O3 -Wno-unused-variable $(INC) -Werror
+LDLIBS = -lm -lejovo
+CFLAGS = -Wall -g -O3 -Wno-unused-variable $(INC) -Werror -Wextra
 
 
 ALL: model model_ejovo validate reduce
