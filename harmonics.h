@@ -133,6 +133,34 @@ static inline double model_S(const spherical_model *model, int l, int m) {
     return model->S_lm->data[PT(l, m)];
 }
 
+// conversion functions from iso to project
+// project to wolfram
+static inline double phip_to_thew(double phi) {
+    return (PI / 2) - phi;
+}
+
+static inline double lamp_to_phiw(double lambda) {
+    // return lambda + PI;
+    return lambda;
+}
+
+static inline double thew_to_phip(double theta) {
+    return (PI / 2) - theta;
+}
+
+static inline double phiw_to_lamp(double phiw) {
+    // return phiw - PI;
+    return phiw;
+}
+
+static inline int data_i_ph(const data_iso *data, int i) {
+    return i / data->t;
+}
+
+static inline int data_i_th(const data_iso *data, int i) {
+    return i % data->t;
+}
+
 
 /**========================================================================
  *!                           Opeartions on Models
@@ -147,15 +175,22 @@ void modelComputeCSlm(spherical_model *model, const data_iso *data);
 // spherical_model *newModel(const data_iso *data, int lmax);
 iso_model *newModel(data_iso *data, int lmax);
 Matrix_d *compute_gradient(const data_iso *data, const spherical_model *model);
-void adjust_parameters(const data_iso *data, const Matrix_d *grad, spherical_model *model, double alpha);
+void adjust_parameters(const Matrix_d *grad, spherical_model *model, double alpha);
 double compute_average_error(const iso_model *iso);
 void writeModel(const spherical_model *model, const data_iso *data, const char *prefix);
 
+double modelPredict(const iso_model *iso, double theta, double phi);
+double modelPredictDataPoint(const iso_model *iso, int i);
+Matrix_d *modelPredictDataPoints(const iso_model *iso, Matrix_i *indices);
+Matrix_d *modelPredictData(const iso_model *iso);
+Matrix_d *modelPredictN(const iso_model *iso, int __n);
+
+double estimate_mse(const iso_model *iso, int n);
 // Retrieve the value of P_l^m(cos \theta_i)
 // 
 // P_lm_th is a n_theta x ll matrix 
 //                                                                     theta_i
-double static inline model_P(spherical_model *model, int l, int m, int thi) {
+static inline double model_P(spherical_model *model, int l, int m, int thi) {
     return matat_d(model->P_lm_th, thi, PT(l, m));
 } 
 
@@ -187,7 +222,7 @@ void load_data_points(const char *filename, int npoint, struct data_points *self
 
 data_points_iso *load_data_points_iso(const char *filename, int npoint);
 
-data_iso *load_iso(const char *filename, int t, int p);
+data_iso *load_data_iso(const char *filename, int t, int p);
 
 void write_iso(const data_iso *data, const char *filename);
 
@@ -209,5 +244,61 @@ void computeP(const struct spherical_harmonics *self, double *P, double sinphi);
    P must be previously evaluated with a call to computeP(self, P, sin(phi));
 */
 double evaluate(const struct spherical_harmonics *self, const double *P, double lambda);
+
+/**========================================================================
+ *!                           Gradient and coefficients functions
+ *========================================================================**/
+// Return a newly allocated matrix containing [c_l^m and s_li^m]
+// O(lmax^2 * data->N) in time
+// the return is a (2 * data->N) x (lmax^2 / 2)
+//
+// [[c00 c10 c11 ... clm](1)
+//  [c00 c10 c11 ... clm](2)
+//  [ .      .        . ](.)
+//  [ .       .       . ](.)
+//  [c00       .     clm](i)
+//  [s00 s10 s11 ... clm](1)
+//  [s00 s10 s11 ... clm](2)
+//  [ .      .        . ](.)
+//  [ .       .       . ](.)
+//  [ .        .      . ](.)
+//  [s00             slm](i)]
+//
+Matrix_d *compute_mse_coeff(const data_iso *data, const spherical_model *model);
+
+Matrix_d *compute_mse_coeff_clm(const data_iso *data, const spherical_model* model);
+
+Matrix_d *compute_mse_coeff_slm(const data_iso *data, const spherical_model* model);
+
+double compute_pcs_i(const spherical_model *model, const Matrix_d *clm, const Matrix_d *slm, int i);
+
+Matrix_d *compute_pcs(const data_iso *data, const spherical_model *model, const Matrix_d *clm, const Matrix_d *slm);
+
+double compute_gradient_clm(const data_iso *data, const Matrix_d *clm, const Matrix_d *pcs, int l, int m);
+
+double compute_gradient_slm(const data_iso *data, const Matrix_d *slm, const Matrix_d *pcs, int l, int m);
+
+Matrix_d *modelPredictData(const iso_model *iso);
+
+double modelPredictDataPoint(const iso_model *iso, int i);
+
+// Compute gradient in the form 
+// [dMSE/dc00 dMSE/dc10 ... dMSE/dclm
+//  dMSE/ds00 dMSE/ds10 ... dMSE/dslm]
+// Assume model has C_lm and S_lm and P_lm_th
+Matrix_d *compute_gradient(const data_iso *data, const spherical_model *model);
+
+Matrix_d *compute_stochastic_gradient(const iso_model *iso, int n);
+
+
+// Assume that a model object has been fully initialized
+double compute_mse(const iso_model *iso);
+
+double compute_average_error(const iso_model *iso);
+
+// Given a gradient matrix and a model, tweak the values of 
+// C_lm to improve the score
+// gradient has size (N * 2) x ((lmax + 1)(lmax + 2)/2)
+void adjust_parameters(const Matrix_d *grad, spherical_model *model, double alpha);
 
 #endif
