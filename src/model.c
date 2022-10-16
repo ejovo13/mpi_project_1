@@ -5,7 +5,7 @@
 #include <getopt.h>
 #include <err.h>
 
-#include "harmonics.h"
+#include "geodesy.h"
 
 int lmax = -1;
 int npoint;

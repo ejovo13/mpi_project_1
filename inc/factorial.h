@@ -1,15 +1,12 @@
+#ifndef GEODESY_FACTORIAL_H
+#define GEODESY_FACTORIAL_H
+
 
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "gmp.h"
 
-#ifndef PI
-#define PI 3.1415926535897932384626433832795028841971693993751058209749445923078164062
-#endif
-
-#ifndef TWO_PI
-#define TWO_PI (2.0 * PI)
-#endif
 
 /**========================================================================
  *!                           Multiple precision functions
@@ -98,3 +95,4 @@ double factorial_coeff(int l, int m) {
     return out * (-1.0 / TWO_PI);
 }
 
+#endif // GEODESY_FACTORIAL_H
