@@ -15,5 +15,6 @@
 #include "harmonics.h"
 #include "learn.h"
 #include "model.h"
+#include "phase_1.h"
 
 #endif // GEODESY_GEODESY_H

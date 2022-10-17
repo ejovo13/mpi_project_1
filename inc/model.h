@@ -84,6 +84,9 @@ static inline int data_i_th(const data_iso *data, int i) { return i % data->t; }
 
 iso_model *newModel(data_iso *data, int lmax);
 
+void writeModel(const spherical_model *model, const data_iso *data, const char *prefix);
+void writeModifiedModel(const spherical_model *model, const data_iso *data, const char *prefix);
+
 iso_model *compute_model(int lmax, const char *filename, int npoint);
 
 //! O(lmax^2 * t)  

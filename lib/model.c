@@ -105,8 +105,6 @@ iso_model *newModel(data_iso *data, int lmax) {
 
 }
 
-// Create a uniform model so that I can compute some predictions
-// iso_model *newModelUniform()
 
 void writeModel(const spherical_model *model, const data_iso *data, const char *prefix) {
 
@@ -124,6 +122,32 @@ void writeModel(const spherical_model *model, const data_iso *data, const char *
     for (size_t l = 0; l <= model->lmax; l++) {
         for (size_t m = 0; m <= l; m++) {
             fprintf(out, "%lu\t%lu\t%.15lf\t%.15lf\n", l, m, model->C_lm->data[PT(l, m)], model->S_lm->data[PT(l, m)]);
+        }
+    }
+
+    fclose(out);
+
+}
+
+// Write an artifically modified model where the written Clm and Slm are multiplied by 4 if 
+// m != 0
+void writeModifiedModel(const spherical_model *model, const data_iso *data, const char *prefix) {
+
+    const int ll = model->ll;
+
+    char fileout[100] = {0};
+
+    sprintf(fileout, "%smmodel_%lu_%d_%d.txt", prefix, model->lmax, data->t, data->p);
+
+    //model_lmax_nth_nph.txt
+    printf("\nWriting data to file: %s\n\n", fileout);
+
+    FILE *out = fopen(fileout, "w");
+
+    for (size_t l = 0; l <= model->lmax; l++) {
+        fprintf(out, "%lu\t%lu\t%.15lf\t%.15lf\n", l, 0, model->C_lm->data[PT(l, 0)], model->S_lm->data[PT(l, 0)]);
+        for (size_t m = 1; m <= l; m++) {
+            fprintf(out, "%lu\t%lu\t%.15lf\t%.15lf\n", l, m, 4.0 * model->C_lm->data[PT(l, m)], 4.0 * model->S_lm->data[PT(l, m)]);
         }
     }
 

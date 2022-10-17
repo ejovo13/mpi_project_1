@@ -1,5 +1,4 @@
 
-#include "geodesy.h"
 
 #include <assert.h>
 #include <math.h>
@@ -102,6 +101,8 @@ int main(int argc, char *argv[]) {
     // iso_model *iso = compute_model(lmax, filename_m, t_m, p_m);
 
     iso_model *iso = compute_model(lmax, data_filename, npoint);
+    writeModifiedModel(iso->model, iso->data, "");
+    // modelWrit
 
 
     write_iso(iso->data, "iso.csv");
