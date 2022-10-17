@@ -7,6 +7,7 @@ reduce
 validate
 .vscode
 *.txt
+!**CMakeLists.txt
 *.csv
 *.png
 build

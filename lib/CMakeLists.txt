@@ -1,0 +1,4 @@
+add_subdirectory(libejovo)
+
+add_library(geodesy data.c harmonics.c model.c learn.c phase_1.c)
+target_link_libraries(geodesy ejovo m)
