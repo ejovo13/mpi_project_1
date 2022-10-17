@@ -112,14 +112,14 @@ int main(int argc, char *argv[]) {
     // print_coeff(iso);
 
     printf("MSE(iso) : %lf\n", compute_mse(iso));
-    printf("err(iso) : %lf\n", compute_average_error(iso)); 
+    // printf("err(iso) : %lf\n", compute_average_error(iso)); 
     printf("ran with lmax := %d\n", lmax);
 
     /**========================================================================
      *!                           Gradient testing
      *========================================================================**/
     FILE *prediction_file = fopen("prediction.csv", "w");
-    update_prediction(iso);
+    // update_prediction(iso);
 
     for (int i = 0; i < iso->data->N; i++) {
 
