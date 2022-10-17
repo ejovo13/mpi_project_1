@@ -34,6 +34,7 @@ void write_binary_plm(int lmax, const Matrix_d *theta, const char *dataset);
 Matrix_d *read_binary_plm(int lmax, int n_theta, const char *binary_filename);
 
 // Return a matrix containing only the P_lm corresponding to l = L
+// Return value is a n_theta x (L + 1) matrix
 Matrix_d *read_binary_plm_l(int lmax, int l, int n_theta, const char *binary_filename);
 
 

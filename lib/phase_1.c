@@ -20,15 +20,20 @@ void write_binary_plm(int lmax, const Matrix_d *th, const char *dataset) {
     int n = Matrix_size_d(th);
     int n_bytes_per_row = sizeof(double) * LL;
 
-    for (int i = 0; i < n; i++) {
-        // Now compute the p values
-        computeP(&sph_model, plm->data, cos(th->data[i]));
-        fwrite(plm->data, n_bytes_per_row, 1, bin);
-    }
+    Clock *clock = Clock_new();
+
+    Clock_tic(clock);
+        for (int i = 0; i < n; i++) {
+            // Now compute the p values
+            computeP(&sph_model, plm->data, cos(th->data[i]));
+            fwrite(plm->data, n_bytes_per_row, 1, bin);
+        }
+    Clock_toc(clock);
 
     fclose(bin);
-    printf("Wrote to binary file: %s\n", filename);
+    printf("Wrote to binary file: %s in %lfs\n", filename, elapsed_time(clock));
 
+    free(clock);
 }
 
 Matrix_d *read_binary_plm(int lmax, int n_th, const char *binary_filename) {
@@ -76,15 +81,21 @@ Matrix_d *read_binary_plm_l(int lmax, int l, int n_theta, const char *binary_fil
 
     FILE *bin = fopen(binary_filename, "rb");
 
-    // Now fill the matrix rowwise
-    for (int i = 0; i < n_theta; i++) {
-        fseek(bin, row_offset_bytes, SEEK_CUR); // seek to start of the row
-        fread(matacc_d(P_L_th, i, 0), bytes_per_row, 1, bin);
-        fseek(bin, row_trailing_bytes, SEEK_CUR);        
-    }
+    Clock *clock = Clock_new();
+
+    Clock_tic(clock);
+        // Now fill the matrix rowwise
+        for (int i = 0; i < n_theta; i++) {
+            fseek(bin, row_offset_bytes, SEEK_CUR); // seek to start of the row
+            fread(matacc_d(P_L_th, i, 0), bytes_per_row, 1, bin);
+            fseek(bin, row_trailing_bytes, SEEK_CUR);        
+        }
+    Clock_toc(clock);
 
     fclose(bin);
     printf("Read in %d x %d P_L_th matrix from %s\n", n_theta, l, binary_filename);
+
+    free(clock);
 
     return P_L_th;
 }

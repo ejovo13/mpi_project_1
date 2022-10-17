@@ -8,7 +8,7 @@
 #include "geodesy.h"
 
 int lmax = -1;
-int npoint;
+int npoint = -1;
 char * data_filename;
 char * model_filename;
 
