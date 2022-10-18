@@ -88,6 +88,13 @@ void writeModel(const spherical_model *model, const data_iso *data, const char *
 void writeModifiedModel(const spherical_model *model, const data_iso *data, const char *prefix);
 
 iso_model *compute_model(int lmax, const char *filename, int npoint);
+iso_model *compute_model_binary(int lmax, const char *binary_in, int npoints);
+
+void free_spherical_model(spherical_model *sph_model);
+void modelFree(iso_model* iso);
+
+iso_model *newModelTimed(data_iso *data, int lmax, double *time_taken);
+double time_new_model(int lmax, int npoint, const char *data_filename);
 
 //! O(lmax^2 * t)  
 // Compute the values P_lm(cos \theta) for every value of theta in a data set.
@@ -111,7 +118,8 @@ void modelComputePlm(iso_model *model, const data_iso *data);
 // stored as 1 x LL matrices of doubles (Matrix_d) 
 // C_lm : [C00 C10 C11 C20 C21 C22 ... Clm]
 // S_lm : [S00 S10 S11 S20 S21 S22 ... Slm]
-void modelComputeCSlm(spherical_model *model, const data_iso *data);
+// return the walltime it took to compute this value
+double modelComputeCSlm(spherical_model *model, const data_iso *data);
 
 /**========================================================================
  *!                          Coefficients functions

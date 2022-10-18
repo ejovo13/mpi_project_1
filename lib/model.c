@@ -44,6 +44,30 @@ iso_trained *copy_trained_model (const iso_trained *rhs) {
     return out;
 };
 
+void free_spherical_model(spherical_model *sph_model) {
+
+    if (sph_model == NULL) return;
+
+    if (sph_model->C_lm != NULL)
+        Matrix_free_d(sph_model->C_lm);
+
+    if (sph_model->S_lm != NULL)
+        Matrix_free_d(sph_model->S_lm);
+
+    if (sph_model->P_lm_th != NULL)
+        Matrix_free_d(sph_model->P_lm_th);
+
+    if (sph_model->pcs != NULL)
+        Matrix_free_d(sph_model->pcs);
+
+    if (sph_model->clm != NULL)
+        Matrix_free_d(sph_model->clm);
+
+    if (sph_model->slm != NULL)
+        Matrix_free_d(sph_model->slm);
+
+}
+
 iso_model *newModel(data_iso *data, int lmax) {
 
     if (lmax < 0) {
@@ -100,6 +124,69 @@ iso_model *newModel(data_iso *data, int lmax) {
     iso->model->clm = compute_mse_coeff_clm(data, model); // 2 x ll matrix
     iso->model->slm  = compute_mse_coeff_slm(data, model); // 2 x ll matrix
     iso->model->pcs = compute_pcs(data, model, iso->model->clm, iso->model->slm); // sum(clm * Plmcos * cos)_i for i in 1..N
+
+    return iso;
+
+}
+
+// Compute a new model, storing the time that it took at the address of `time_taken`
+iso_model *newModelTimed(data_iso *data, int lmax, double *time_taken) {
+
+    if (lmax < 0) {
+        perror("Negative lmax passed into newModel, exiting\n");
+        exit(EXIT_FAILURE);
+    }
+
+    const int ll = (lmax + 1) * (lmax + 2) / 2;
+
+    spherical_model *model = (spherical_model *) malloc(sizeof(*model));
+
+    if (model == NULL) {
+        perror("Error allocating new model\n");
+        exit(EXIT_FAILURE);
+    }
+
+    model->C_lm    = NULL;
+    model->S_lm    = NULL;
+    model->P_lm_th = NULL;
+    model->pcs     = NULL;
+    model->clm     = NULL;
+    model->slm     = NULL;
+
+    model->ll = ll;
+    model->lmax = lmax;
+    model->C_lm    = Matrix_new_d(1, model->ll);
+    model->S_lm    = Matrix_new_d(1, model->ll);
+    model->P_lm_th = Matrix_new_d(data->t, model->ll);
+
+    // Now process the data to fill in the model    
+    // Initialize P_lm_th
+
+    // printf("th: [%lf, %lf]\tph: [%lf, %lf]\n", th_0, th_f, ph_0, ph_f);
+
+    // make sure data got loaded
+    printf("[newModel] New model successfully constructed\n");
+
+    printf("[newModel] Model: { .ll = %lu, .lmax = %lu}\n", model->ll, model->lmax);
+
+    printf("[newModel] Data:  { .N = %d, .t = %d, .p = %d}\n", data->N, data->t, data->p);
+
+    // Now let's create the "iso_model type"
+    iso_model *iso = (iso_model *) malloc(sizeof(*iso));
+
+    iso->data = data;
+    iso->model = model;
+
+    modelComputePlm(iso, data);
+    printf("[newModel] Completed computing Plm\n");
+    *time_taken = modelComputeCSlm(model, data);
+    printf("[newModel] Completed computing CSlm\n");
+
+    // initialize coefficients
+    iso->model->clm = compute_mse_coeff_clm(data, model); // 2 x ll matrix
+    iso->model->slm  = compute_mse_coeff_slm(data, model); // 2 x ll matrix
+    iso->model->pcs = compute_pcs(data, model, iso->model->clm, iso->model->slm); // sum(clm * Plmcos * cos)_i for i in 1..N
+    iso->f_hat = NULL;
 
     return iso;
 
@@ -187,8 +274,9 @@ void modelComputePlm(iso_model *iso, const data_iso *data) {
     // Matrix_print_d(model->P_lm_th);
 }
 
-// Estimate the Laplace series coefficients Clm and Slm via numeric integration
-void modelComputeCSlm(spherical_model *model, const data_iso *data) {
+// Estimate the Laplace series coefficients Clm and Slm via numeric integration,
+// and then return the time that it took to compute this value.
+double modelComputeCSlm(spherical_model *model, const data_iso *data) {
 
     const int lmax = model->lmax;
     const int ll = model->ll;
@@ -204,6 +292,9 @@ void modelComputeCSlm(spherical_model *model, const data_iso *data) {
     double c_integral = 0;
     double s_integral = 0;
     int count = 0;
+
+    Clock *clock = Clock_new();
+    Clock_tic(clock);
 
     for (int l = 0; l <= lmax; l++) {
 
@@ -236,8 +327,8 @@ void modelComputeCSlm(spherical_model *model, const data_iso *data) {
                 double sin_mph = sin(m * ph_iph);
 
                 // use the midpoint formula
-                c_integral += matat_d(data->r, i_ph, i_th) * matat_d(model->P_lm_th, i_th, PT(l, m)) * cos_mph * vecat_d(sinth, i_th);
-                s_integral += matat_d(data->r, i_ph, i_th) * matat_d(model->P_lm_th, i_th, PT(l, m)) * sin_mph * vecat_d(sinth, i_th);
+                c_integral += data->r[i] * matat_d(model->P_lm_th, i_th, PT(l, m)) * cos_mph * vecat_d(sinth, i_th);
+                s_integral += data->r[i] * matat_d(model->P_lm_th, i_th, PT(l, m)) * sin_mph * vecat_d(sinth, i_th);
 
                 count ++;
             }
@@ -261,6 +352,13 @@ void modelComputeCSlm(spherical_model *model, const data_iso *data) {
             // printf("Computed coefficients for (%d, %d)\n", l, m);
         }
     }
+
+    Clock_toc(clock);
+    double time = elapsed_time(clock);
+    free(clock);
+
+    return time;
+
 }
 
 
@@ -278,6 +376,8 @@ iso_model *compute_model(int lmax, const char *datafile, int npoints) {
 
     printf("[compute_model] Constructing model { lmax: %d, t: %d, p: %d}\n", lmax, n_theta, n_phi);
     data_iso *data = load_data_iso(datafile, n_theta, n_phi);
+
+    // Now let's print the data points that were actually loaded.
 
 
     // use lmax to initialize data->l_indices 
@@ -297,6 +397,98 @@ iso_model *compute_model(int lmax, const char *datafile, int npoints) {
     writeModel(iso->model, data, "");    
 
     return iso;
+}
+
+// Given an lmax, compute the values of C_lm and S_lm and return the values
+// in a Vector of the form
+//
+//  Coeff = [ C_lm S_lm ]
+//
+// where the length of Coeff is 2 * (lmax + 1) * (lmax + 2) / 2
+iso_model *compute_model_binary(int lmax, const char *binary_in, int npoints) {
+
+    const int ll = (lmax + 1) * (lmax + 2) / 2;
+    const int n_theta = sqrt(npoints / 2);
+    const int n_phi   = 2 * n_theta;
+
+    printf("[compute_model] Constructing model { lmax: %d, t: %d, p: %d}\n", lmax, n_theta, n_phi);
+    data_iso *data = load_data_binary(binary_in, n_theta, n_phi);
+
+    // Now let's print the data points that were actually loaded.
+
+
+    // use lmax to initialize data->l_indices 
+    data->l_indices = Matrix_new_i(1, ll);
+    data->m_indices = Matrix_new_i(1, ll);
+
+    int i = 0;
+    for (int l = 0; l <= lmax; l++) {
+        for (int m = 0; m <= l; m++) {
+            data->l_indices->data[i] = l;
+            data->m_indices->data[i] = m;
+            i++;
+        }
+    }
+
+    iso_model *iso = newModel(data, lmax);
+    writeModel(iso->model, data, "");    
+
+    return iso;
+}
+
+// I'm not particularly fond of this inconsistent naming scheme between
+// pascalCase and snake_case
+void modelFree(iso_model* iso) {
+
+    if (iso == NULL) return;
+
+    free_data_iso(iso->data);
+    free_spherical_model(iso->model);
+    free_spherical_harmonics(iso->coeff);
+
+    if (iso->f_hat != NULL) 
+        Matrix_free_d(iso->f_hat);
+
+    free(iso);
+}
+
+// Return the time that it takes to compute a model of size Lmax using 
+// numerical quadrature
+double time_new_model(int lmax, int npoints, const char *data_filename) {
+
+    double time = 0;
+
+    // First step is to load the model
+    const int ll = (lmax + 1) * (lmax + 2) / 2;
+    const int n_theta = sqrt(npoints / 2);
+    const int n_phi   = 2 * n_theta;
+
+    printf("[compute_model] Constructing model { lmax: %d, t: %d, p: %d}\n", lmax, n_theta, n_phi);
+    data_iso *data = load_data_iso(data_filename, n_theta, n_phi);
+
+    // Now let's print the data points that were actually loaded.
+
+
+    // use lmax to initialize data->l_indices 
+    data->l_indices = Matrix_new_i(1, ll);
+    data->m_indices = Matrix_new_i(1, ll);
+
+    int i = 0;
+    for (int l = 0; l <= lmax; l++) {
+        for (int m = 0; m <= l; m++) {
+            data->l_indices->data[i] = l;
+            data->m_indices->data[i] = m;
+            i++;
+        }
+    }
+
+    iso_model *iso = newModelTimed(data, lmax, &time);
+    writeModel(iso->model, data, "timed");    
+
+    // free the model...
+    modelFree(iso); 
+
+    return time;
 }
 
 
@@ -478,7 +670,7 @@ double compute_gradient_clm(const data_iso *data, const Matrix_d *clm, const Mat
     for (int i = 0; i < data->N; i++) {
 
         double clmi = matat_d(clm, i, PT(l, m));
-        sum += 2 * clmi * pcs->data[i] - 2 * clmi * vecat_d(data->r, i);
+        sum += 2 * clmi * pcs->data[i] - 2 * clmi * data->r[i];
     }
 
     return sum;
@@ -493,11 +685,12 @@ double compute_gradient_clm_points(const iso_model *iso, const Matrix_d *clm, co
     for (size_t __i = 0; __i < Matrix_size_i(indices); __i++) {
         int i = indices->data[__i];
         double clmi = matat_d(clm, i, PT(l, m));
-        sum += 2 * clmi * pcs->data[__i] - 2 * clmi * vecat_d(iso->data->r, i);
+        sum += 2 * clmi * pcs->data[__i] - 2 * clmi * iso->data->r[i];
     }
 
     return sum;
 }
+
 // Passed pcs is a REDUCED estimation of PCS
 double compute_gradient_slm_points(const iso_model *iso, const Matrix_d *slm, const Matrix_d *pcs, int l, int m, const Matrix_i *indices) {
 
@@ -507,7 +700,7 @@ double compute_gradient_slm_points(const iso_model *iso, const Matrix_d *slm, co
     for (size_t i = 0; i < Matrix_size_i(indices); i++) {
         int index = indices->data[i];
         double slmi = matat_d(slm, index, PT(l, m));
-        sum += 2 * slmi * pcs->data[i] - 2 * slmi * vecat_d(iso->data->r, index);
+        sum += 2 * slmi * pcs->data[i] - 2 * slmi * iso->data->r[index];
     }
 
     return sum;
@@ -522,7 +715,7 @@ double compute_gradient_slm(const data_iso *data, const Matrix_d *slm, const Mat
 
         double slmi = matat_d(slm, i, PT(l, m));
         // sum += 2 * slmi * pcs->data[i] - 2 * slmi * data->r[i];
-        sum += 2 * slmi * pcs->data[i] - 2 * slmi * vecat_d(data->r, i);
+        sum += 2 * slmi * pcs->data[i] - 2 * slmi * data->r[i];
     }
 
     return sum;

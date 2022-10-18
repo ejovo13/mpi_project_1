@@ -8,7 +8,10 @@
 int main() {
 
     const int lmax = 788;
-    const int n_theta = 10800;
+    // const int n_theta = 10800;
+
+    const int t_u = 10800;
+    const int p_u = t_u * 2;
 
     // need to load the data from a text file. That's not going to happen yet, we first need 
     // to improve our loading capabilities.
@@ -25,7 +28,10 @@ int main() {
     // Examine the contents of our binary data sest.
 
     // binary_dataset_to_csv(64800, "ETOPO1_small.bin", "ETOPO1_small_mod.csv");
-    binary_dataset_to_csv(583200, "ETOPO1_med.bin", "ETOPO1_med_mod.csv");
+    // binary_dataset_to_csv(583200, "ETOPO1_med.bin", "ETOPO1_med_mod.csv");
+
+    // Compute a few coefficients
+
 
 
     return 0;

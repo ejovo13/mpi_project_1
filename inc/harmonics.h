@@ -81,4 +81,6 @@ void computeP(const struct spherical_harmonics *self, double *P, double sinphi);
 */
 double evaluate(const struct spherical_harmonics *self, const double *P, double lambda);
 
+void free_spherical_harmonics(struct spherical_harmonics *sph_harm);
+
 #endif // GEODESY_HARMONICS_H

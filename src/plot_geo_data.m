@@ -4,7 +4,7 @@ path_unit = '/home/ejovo/MAIN/S7/PPAR/project_1/csv/ETOPO1_unit.csv';
 path_small = '/home/ejovo/MAIN/S7/PPAR/project_1/csv/ETOPO1_small.csv';
 path_small_prediction = '/home/ejovo/MAIN/S7/PPAR/project_1/csv/prediction.csv';
 
-path_pred = '/home/ejovo/MAIN/S7/PPAR/project_1/build/src/prediction.csv'
+path_pred = '/home/ejovo/MAIN/S7/PPAR/project_1/build/src/prediction.csv';
 
 
 % load(path_unit);
@@ -16,14 +16,14 @@ path_pred = '/home/ejovo/MAIN/S7/PPAR/project_1/build/src/prediction.csv'
 % load(path_med);
 % tmp = ETOPO1_med;
 
-load(path_small);
-tmp = ETOPO1_small;
+% load(path_small);
+% tmp = ETOPO1_small;
 
 % load(path_small_prediction)
 % tmp = prediction;
 
-% load(path_pred);
-% tmp = prediction;
+load(path_pred);
+tmp = prediction;
 
 sph = zeros(size(tmp));
 

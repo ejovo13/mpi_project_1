@@ -116,3 +116,16 @@ void setup_spherical_harmonics(int lmax, struct spherical_harmonics *self)
 
     // print the computed values:
 }
+
+void free_spherical_harmonics(struct spherical_harmonics *sph_harm) {
+    if (sph_harm == NULL) return;
+
+    if (sph_harm->CS != NULL) 
+        free(sph_harm->CS);
+
+    if (sph_harm->A != NULL) 
+        free(sph_harm->A);
+
+    if (sph_harm->B != NULL) 
+        free(sph_harm->B);
+}
