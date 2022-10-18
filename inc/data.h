@@ -31,7 +31,8 @@ typedef struct data_iso {
     int p;
     Matrix_d *th; // only store t values of theta
     Matrix_d *ph; // only store p values of ph
-    Matrix_d *r;  // store N values
+    // Matrix_d *r;  // store N values
+    int16_t *r;
     double dt;
     double dp;
     Matrix_i *l_indices; // Store linear indices of l and m
@@ -54,5 +55,8 @@ void write_iso(const data_iso *data, const char *filename);
 void print_npoints(const data_points_iso* data, int n);
 
 void write_npoints(const data_points_iso* data, int npoints, const char *filename);
+
+// Free a data pointer that was allocated with malloc
+void free_data_iso(data_iso *data);
 
 #endif // GEODESY_DATA_H

@@ -104,10 +104,14 @@ data_iso *load_data_iso(const char *filename, int t, int p) {
     // Create the data object matrix
     data->th = Matrix_new_d(1, t);
     data->ph = Matrix_new_d(1, p);
-    data->r  = Matrix_new_d(p, t); 
+    // data->r  = Matrix_new_d(p, t);
+
+    data->r = (int16_t *) malloc(sizeof(*data->r) * t * p); 
 
     // shorthand aliases:
-    Matrix_d *th = data->th, *ph = data->ph, *r = data->r;
+    Matrix_d *th = data->th, *ph = data->ph;
+    
+    int16_t *r = data->r;
 
 
     // data->th = (double *) malloc(sizeof(*data->th) * t); 
@@ -146,8 +150,8 @@ data_iso *load_data_iso(const char *filename, int t, int p) {
 		// int k = fscanf(f, "%lg %lg %lg", &data->lambda[i], &data->phi[i], &data->V[i]);
 		int k = fscanf(f, "%lg %lg %lg", &p_lambda, &p_phi, &p_val);
 
-        // data->r[i] = p_val;
-        vecset_d(r, i, p_val);
+        data->r[i] = (int16_t) p_val;
+        // vecset_d(r, i, p_val);
         count++;
 
 		if (k == EOF) {
@@ -195,7 +199,7 @@ void write_iso(const data_iso* data, const char *filename) {
 
     for (int i = 0; i < data->N; i++) {
         // fprintf(out, "%lf\t%lf\t%lf\n", data->th[i % data->t], data->ph[i / data->p], data->r[i]);
-        fprintf(out, "%.15lf\t%.15lf\t%.15lf\n", vecat_d(data->th, i % data->t), vecat_d(data->ph, i / data->t), vecat_d(data->r, i));
+        fprintf(out, "%.15lf\t%.15lf\t%.15lf\n", vecat_d(data->th, i % data->t), vecat_d(data->ph, i / data->t), data->r[i]);
     }
 
     fclose(out);
@@ -226,4 +230,24 @@ void load_spherical_harmonics(const char *filename, int lmax, struct spherical_h
 			errx(1, "parse error");
 	}
 	fclose(g);
+}
+
+void free_data_iso(data_iso *data) {
+
+    if (data == NULL) return;
+
+    if (data->th != NULL) 
+        Matrix_free_d(data->th);
+
+    if (data->ph != NULL)
+        Matrix_free_d(data->ph);
+
+    if (data->r != NULL) 
+        free(data->r);
+
+    if (data->l_indices != NULL)
+        free(data->l_indices);
+
+    if (data->m_indices != NULL)
+        free(data->m_indices);
 }

@@ -41,8 +41,8 @@ void write_binary_cslm(int L, int lmax, int n_theta, const data_iso *data, const
             double sin_mph = sin(m * ph_iph);
 
             // use the midpoint formula
-            c_integral += matat_d(data->r, i_ph, i_th) * matat_d(P_L_th, i_th, m) * cos_mph * vecat_d(sinth, i_th);
-            s_integral += matat_d(data->r, i_ph, i_th) * matat_d(P_L_th, i_th, m) * sin_mph * vecat_d(sinth, i_th);
+            c_integral += data->r[i] * matat_d(P_L_th, i_th, m) * cos_mph * vecat_d(sinth, i_th);
+            s_integral += data->r[i] * matat_d(P_L_th, i_th, m) * sin_mph * vecat_d(sinth, i_th);
 
             count ++;
         }
@@ -159,4 +159,87 @@ void reduce_csv_to_binary(int n_points, const char *csv_in, const char *binary_o
 
     printf("Walked through dataset: %s\n", csv_in);
 
+}
+
+data_iso *load_data_binary(const char *binary_file_in, int t, int p) {
+
+    data_iso *data = (data_iso *) malloc(sizeof(*data));
+    if (!data) err(1, "Cannot allocate data points structure");
+
+    printf("[load_data_binary] Opening %s\n", binary_file_in);
+
+    const double d_th = PI / t; 
+    const double d_ph = TWO_PI / p;
+
+	data->N = t * p;
+    data->p = p;
+    data->t = t;
+    data->dt = d_th;
+    data->dp = d_ph;
+
+    // Create the data object matrix
+    data->th = Matrix_new_d(1, t);
+    data->ph = Matrix_new_d(1, p);
+    // data->r  = Matrix_new_d(p, t); 
+    data->r  = (int16_t *) malloc(sizeof(*data->r) * t * p); 
+
+    // shorthand aliases:
+    Matrix_d *th = data->th, *ph = data->ph;
+    int16_t *r = data->r;
+
+
+    // data->th = (double *) malloc(sizeof(*data->th) * t); 
+    // data->ph = (double *) malloc(sizeof(*data->ph) * p);
+	// data->r  = malloc(data->N * sizeof(double));
+
+    printf("[load_data_iso] Trying to read %d elements\n", data->N);
+
+	if (th == NULL || ph == NULL || r == NULL)
+		err(1, "cannot allocate data points\n");
+    
+
+    // fill theta matrix
+    // data->th[0] = 0;
+    vecset_d(th, 0, 0);
+    for (int i = 1; i < t; i++) {
+        *vecptr_d(th, i) = vecat_d(th, i - 1) + d_th;
+    }
+
+    vecset_d(ph, 0, - PI);
+    for (int i = 1; i < p; i++) {
+        *vecptr_d(ph, i) = vecat_d(ph, i - 1) + d_ph;
+    }
+
+	FILE *f = fopen(binary_file_in, "rb");
+	if (f == NULL)
+		err(1, "cannot open %s", binary_file_in);
+
+    double p_lambda;
+    double p_phi;
+    double p_val;
+
+    int count = 0;
+	for (int i = 0; i < data->N; i++) {
+
+		// int k = fscanf(f, "%lg %lg %lg", &data->lambda[i], &data->phi[i], &data->V[i]);
+		int k = fscanf(f, "%lg %lg %lg", &p_lambda, &p_phi, &p_val);
+
+        // data->r[i] = p_val;
+        // vecset_d(r, i, p_val);
+        data->r[i] = (int16_t) p_val;
+        count++;
+
+		if (k == EOF) {
+			if (ferror(f))
+				err(1, "read error");
+			errx(1, "premature end-of-file after %d records", i);
+		}
+		if (k != 3)
+			errx(1, "parse error on line %d", i+1);
+	}
+	fclose(f);
+
+    printf("[load_data_iso] Read %d lines\n", count);
+
+    return data;
 }

@@ -219,7 +219,7 @@ double compute_mse(const iso_model *iso) {
 
     // now compute the difference between the two
     for (int i = 0; i < data->N; i++) {
-        double diff = vecat_d(predictions, i) - vecat_d(data->r, i);
+        double diff = vecat_d(predictions, i) - data->r[i];
         sum += diff * diff;
     }
 
@@ -243,7 +243,7 @@ double estimate_mse(const iso_model *iso, int n) {
 
     for (int i = 0; i < n; i++) {
         int index = indices->data[i] - 1;
-        double diff = vecat_d(predictions, i) - vecat_d(data->r, index);
+        double diff = vecat_d(predictions, i) - data->r[index];
         sum += diff * diff;
     }
 
@@ -265,7 +265,7 @@ double compute_average_error(const iso_model *iso) {
 
     // now compute the difference between the two
     for (int i = 0; i < data->N; i++) {
-        sum += vecat_d(predictions, i) - vecat_d(data->r, i);
+        sum += vecat_d(predictions, i) - data->r[i];
     }
 
     return sum / data->N;

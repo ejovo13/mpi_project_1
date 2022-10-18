@@ -27,6 +27,9 @@ void binary_dataset_to_csv(int n_points, const char *binary_in, const char *outp
 // Compute a full set of coefficients CLm and SLm, then store them to two binary files 
 void write_binary_cslm(int L, int lmax, int n_theta, const data_iso *data, const char *binary_file_in);
 
+// Need to create a data object from a binary file
+data_iso *load_data_binary(const char *binary_file_in, int t, int p);
+
 
 
 #endif // GEODESY_PHASE_2_H
