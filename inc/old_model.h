@@ -106,5 +106,6 @@ void linear_least_squares(int m, int n, double *A, double *b);
 double old_model(int lmax, int npoint, const char *data_filename, const char *model_filename);
 
 
+double old_model_quiet(int lmax, int npoint, const char *data_filename, const char *model_filename);
 
 #endif // GEODESY_OLD_MODEL_H

@@ -256,5 +256,87 @@ double old_model(int lmax, int npoint, const char *data_filename, const char *mo
 			fprintf(g, "%d\t%d\t%.18g\t%.18g\n", l, m, data.V[CT(l, m)], data.V[ST(l, m)]);
 	}
 
+    fclose(g);
+
+    return t;
+}
+
+// shhhhh
+double old_model_quiet(int lmax, int npoint, const char *data_filename, const char *model_filename) {
+    	int nvar = (lmax + 1) * (lmax + 1);
+	// printf("Linear Least Squares with dimension %d x %d\n", npoint, nvar);
+	if (nvar > npoint)
+		errx(1, "not enough data points");
+
+	long matrix_size = sizeof(double) * nvar * npoint;
+	char hsize[16];
+	human_format(hsize, matrix_size);
+	// printf("Matrix size: %sB\n", hsize);
+
+	double *A = malloc(matrix_size);
+	if (A == NULL)
+		err(1, "cannot allocate matrix");
+
+	double * P = malloc((lmax + 1) * (lmax + 1) * sizeof(*P));
+	double * v = malloc(npoint * sizeof(*v));
+	if (P == NULL || v == NULL)
+		err(1, "cannot allocate data points\n");
+
+	// printf("Reading data points from %s\n", data_filename);
+	struct data_points data;
+	load_data_points(data_filename, npoint, &data);
+	// printf("Successfully read %d data points\n", npoint);
+	
+	// printf("Building matrix\n");
+	struct spherical_harmonics model;
+	setup_spherical_harmonics(lmax, &model);
+
+	for (int i = 0; i < npoint; i++) {
+		computeP(&model, P, sin(data.phi[i]));
+		
+		for (int l = 0; l <= lmax; l++) {
+			/* zonal term */
+			A[i + npoint * CT(l, 0)] = P[PT(l, 0)];
+	
+			/* tesseral terms */
+			for (int m = 1; m <= l; m++) {
+				A[i + npoint * CT(l, m)] = P[PT(l, m)] * cos(m * data.lambda[i]);
+				A[i + npoint * ST(l, m)] = P[PT(l, m)] * sin(m * data.lambda[i]);
+			}
+		}
+	}
+	
+	double FLOP = 2. * nvar * nvar * npoint;
+	char hflop[16];
+	human_format(hflop, FLOP);
+	// printf("Least Squares (%sFLOP)\n", hflop);
+	double start = wtime();
+	
+	/* the real action takes place here */
+	linear_least_squares(npoint, nvar, A, data.V);
+	
+	double t = wtime()  - start;
+	double FLOPS = FLOP / t;
+	char hflops[16];
+	human_format(hflops, FLOPS);
+	// printf("Completed in %.1f s (%s FLOPS)\n", t, hflops);
+
+	double res = 0;
+	for (int j = nvar; j < npoint; j++)
+		res += data.V[j] * data.V[j];
+	// printf("residual sum of squares %g\n", res);
+
+	// printf("Saving model in %s\n", model_filename);
+	FILE *g = fopen(model_filename, "w");
+	if (g == NULL)
+		err(1, "cannot open %s for writing\n", model_filename);
+	for (int l = 0; l <= lmax; l++) {
+		fprintf(g, "%d\t0\t%.18g\t0\n", l, data.V[CT(l, 0)]);
+		for (int m = 1; m <= l; m++)
+			fprintf(g, "%d\t%d\t%.18g\t%.18g\n", l, m, data.V[CT(l, m)], data.V[ST(l, m)]);
+	}
+
+    fclose(g);
+
     return t;
 }

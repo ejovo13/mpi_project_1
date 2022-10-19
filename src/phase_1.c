@@ -9,15 +9,15 @@
 
 int lmax = -1;
 int ntheta = -1;
-char * name = NULL;
+char * binary_out = NULL;
 
 void usage(char ** argv)
 {
         printf("%s [OPTIONS]\n\n", argv[0]);
         printf("Options:\n");
         printf("--ntheta N                      number of theta in discretization\n");
-        printf("--lmax N                        degree of the stored binary file\n");
-        printf("--name [small|med|high|ultra]   name of the data set we will process\n");
+        printf("--lmax L                        degree of the stored binary file\n");
+        printf("--binary_out FILE               name of the output binary file\n");
         printf("\n");
         exit(0);
 }
@@ -27,7 +27,7 @@ void process_command_line_options(int argc, char ** argv)
         struct option longopts[] = {
                 {"ntheta", required_argument, NULL, 'n'},
                 {"lmax", required_argument, NULL, 'l'},
-                {"name", required_argument, NULL, 'm'},
+                {"name", required_argument, NULL, 'b'},
                 {NULL, 0, NULL, 0}
         };
         char ch;
@@ -36,8 +36,8 @@ void process_command_line_options(int argc, char ** argv)
                 case 'n':
                         ntheta = atoi(optarg);
                         break;
-                case 'm':
-                        name = optarg;
+                case 'b':
+                        binary_out = optarg;
                         break;
                 case 'l':
                         lmax = atoll(optarg);
@@ -47,7 +47,7 @@ void process_command_line_options(int argc, char ** argv)
                 }
         }
         /* missing required args? */
-        if (name == NULL || ntheta < 0 || lmax < 0)
+        if (binary_out == NULL || ntheta < 0 || lmax < 0)
                 usage(argv);
 }
 
@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
     }
 
 
-    write_binary_plm(lmax, theta, name);
+    write_binary_plm(lmax, theta, binary_out); // Runs in about 30s for the Ultra data set and L = 788
 
 
     return 0;

@@ -1,15 +1,17 @@
 #include "geodesy.h"
 
 // Compute a full set of coefficients CLm and SLm, then store them to two binary files 
-void write_binary_cslm(int L, int lmax, int n_theta, const data_iso *data, const char *binary_file_in) {
+// TODO Refactor. I shouldn't be dealing with the computation here.
+// separate computation and binary file I/O
+void write_binary_cslm(int L, int lmax, const data_iso *data, const char *p_lm_th_binary) {
 
     const int ll = (lmax + 1) * (lmax + 2) / 2;
 
-    Matrix_d *C_L = Matrix_new_d(1, L);
-    Matrix_d *S_L = Matrix_new_d(1, L);
+    Matrix_d *C_L = Matrix_new_d(1, L + 1);
+    Matrix_d *S_L = Matrix_new_d(1, L + 1);
 
     // n_theta x (L + 1) matrix
-    Matrix_d *P_L_th = read_binary_plm_l(lmax, L, n_theta, binary_file_in);
+    Matrix_d *P_L_th = read_binary_plm_l(lmax, L, data->t, p_lm_th_binary);
 
     printf("[ write_binary_cslm ] computing coefficients for L = %d \n", L);
 
@@ -68,8 +70,8 @@ void write_binary_cslm(int L, int lmax, int n_theta, const data_iso *data, const
 
     const int n_bytes = sizeof(double) * (L + 1);
 
-    fwrite(C_L->data, n_bytes, 0, c_coeff_out);
-    fwrite(S_L->data, n_bytes, 0, s_coeff_out);
+    fwrite(C_L->data, n_bytes, 1, c_coeff_out);
+    fwrite(S_L->data, n_bytes, 1, s_coeff_out);
 
     fclose(c_coeff_out);
     fclose(s_coeff_out);
@@ -91,7 +93,12 @@ int16_t *read_binary_dataset(int n_points, const char *binary_file_in) {
 
     // Now open up the file and read through it
     FILE *bin = fopen(binary_file_in, "rb");
+    if (bin == NULL) {
+        errx(2, "Binary data set `%s` not found\n", binary_file_in);
+    }
     fread(z, n_bytes, 1, bin);
+
+    fclose(bin);
 
     return z;
 }
@@ -180,21 +187,12 @@ data_iso *load_data_binary(const char *binary_file_in, int t, int p) {
     // Create the data object matrix
     data->th = Matrix_new_d(1, t);
     data->ph = Matrix_new_d(1, p);
-    // data->r  = Matrix_new_d(p, t); 
-    data->r  = (int16_t *) malloc(sizeof(*data->r) * t * p); 
 
     // shorthand aliases:
     Matrix_d *th = data->th, *ph = data->ph;
     int16_t *r = data->r;
 
-
-    // data->th = (double *) malloc(sizeof(*data->th) * t); 
-    // data->ph = (double *) malloc(sizeof(*data->ph) * p);
-	// data->r  = malloc(data->N * sizeof(double));
-
-    printf("[load_data_iso] Trying to read %d elements\n", data->N);
-
-	if (th == NULL || ph == NULL || r == NULL)
+	if (th == NULL || ph == NULL)
 		err(1, "cannot allocate data points\n");
     
 
@@ -210,36 +208,47 @@ data_iso *load_data_binary(const char *binary_file_in, int t, int p) {
         *vecptr_d(ph, i) = vecat_d(ph, i - 1) + d_ph;
     }
 
-	FILE *f = fopen(binary_file_in, "rb");
-	if (f == NULL)
-		err(1, "cannot open %s", binary_file_in);
-
-    double p_lambda;
-    double p_phi;
-    double p_val;
-
-    int count = 0;
-	for (int i = 0; i < data->N; i++) {
-
-		// int k = fscanf(f, "%lg %lg %lg", &data->lambda[i], &data->phi[i], &data->V[i]);
-		int k = fscanf(f, "%lg %lg %lg", &p_lambda, &p_phi, &p_val);
-
-        // data->r[i] = p_val;
-        // vecset_d(r, i, p_val);
-        data->r[i] = (int16_t) p_val;
-        count++;
-
-		if (k == EOF) {
-			if (ferror(f))
-				err(1, "read error");
-			errx(1, "premature end-of-file after %d records", i);
-		}
-		if (k != 3)
-			errx(1, "parse error on line %d", i+1);
-	}
-	fclose(f);
-
-    printf("[load_data_iso] Read %d lines\n", count);
+    data->r = read_binary_dataset(data->N, binary_file_in);
 
     return data;
+}
+
+/**========================================================================
+ *!                      Binary Datasets
+ *========================================================================**/
+
+data_iso *get_data_small() {
+
+    const char *binary_in = "../../bin/ETOPO1_small.bin";
+    const int n_theta     = 180;
+    const int n_phi       = n_theta * 2;
+
+    return load_data_binary(binary_in, n_theta, n_phi);
+}
+
+data_iso *get_data_med() {
+
+    const char *binary_in = "../../bin/ETOPO1_med.bin";
+    const int n_theta     = 540;
+    const int n_phi       = n_theta * 2;
+
+    return load_data_binary(binary_in, n_theta, n_phi);
+}
+
+data_iso *get_data_hi() {
+
+    const char *binary_in = "../../bin/ETOPO1_hi.bin";
+    const int n_theta     = 1800;
+    const int n_phi       = n_theta * 2;
+
+    return load_data_binary(binary_in, n_theta, n_phi);
+}
+
+data_iso *get_data_ultra() {
+
+    const char *binary_in = "../../bin/ETOPO1_ultra.bin";
+    const int n_theta     = 10800;
+    const int n_phi       = n_theta * 2;
+
+    return load_data_binary(binary_in, n_theta, n_phi);
 }

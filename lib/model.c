@@ -379,16 +379,16 @@ iso_model *compute_model(int lmax, const char *datafile, int npoints) {
 
     // Now let's print the data points that were actually loaded.
 
-
+    // TODO refactor to be stored in the model
     // use lmax to initialize data->l_indices 
-    data->l_indices = Matrix_new_i(1, ll);
-    data->m_indices = Matrix_new_i(1, ll);
+    Matrix_i *l_indices = Matrix_new_i(1, ll);
+    Matrix_i *m_indices = Matrix_new_i(1, ll);
 
     int i = 0;
     for (int l = 0; l <= lmax; l++) {
         for (int m = 0; m <= l; m++) {
-            data->l_indices->data[i] = l;
-            data->m_indices->data[i] = m;
+            l_indices->data[i] = l;
+            m_indices->data[i] = m;
             i++;
         }
     }
@@ -418,14 +418,14 @@ iso_model *compute_model_binary(int lmax, const char *binary_in, int npoints) {
 
 
     // use lmax to initialize data->l_indices 
-    data->l_indices = Matrix_new_i(1, ll);
-    data->m_indices = Matrix_new_i(1, ll);
+    Matrix_i *l_indices = Matrix_new_i(1, ll);
+    Matrix_i *m_indices = Matrix_new_i(1, ll);
 
     int i = 0;
     for (int l = 0; l <= lmax; l++) {
         for (int m = 0; m <= l; m++) {
-            data->l_indices->data[i] = l;
-            data->m_indices->data[i] = m;
+            l_indices->data[i] = l;
+            m_indices->data[i] = m;
             i++;
         }
     }
@@ -470,14 +470,14 @@ double time_new_model(int lmax, int npoints, const char *data_filename) {
 
 
     // use lmax to initialize data->l_indices 
-    data->l_indices = Matrix_new_i(1, ll);
-    data->m_indices = Matrix_new_i(1, ll);
+    Matrix_i *l_indices = Matrix_new_i(1, ll);
+    Matrix_i *m_indices = Matrix_new_i(1, ll);
 
     int i = 0;
     for (int l = 0; l <= lmax; l++) {
         for (int m = 0; m <= l; m++) {
-            data->l_indices->data[i] = l;
-            data->m_indices->data[i] = m;
+            l_indices->data[i] = l;
+            m_indices->data[i] = m;
             i++;
         }
     }
@@ -720,3 +720,4 @@ double compute_gradient_slm(const data_iso *data, const Matrix_d *slm, const Mat
 
     return sum;
 }
+

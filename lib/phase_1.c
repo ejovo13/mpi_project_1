@@ -1,11 +1,14 @@
 #include "geodesy.h"
 
-void write_binary_plm(int lmax, const Matrix_d *th, const char *dataset) {
+void write_binary_plm(int lmax, const Matrix_d *th, const char *binary_file_out) {
 
     const int LL = (lmax + 1) * (lmax + 2) / 2;
-    char filename[100] = {0};
 
-    sprintf(filename, "ETOPO1_%s_P%d.bin", dataset, lmax);
+    // This is hardcoded and really a bad idea.
+    // should adjust the function to take in the full name of the input 
+    // file
+    // char filename[100] = {0};
+    // sprintf(filename, "ETOPO1_%s_P%d.bin", dataset, lmax);
 
     // Allocate space for a single row of the matrix
     Matrix_d *plm = Matrix_new_d(1, LL);
@@ -15,7 +18,7 @@ void write_binary_plm(int lmax, const Matrix_d *th, const char *dataset) {
     setup_spherical_harmonics(lmax, &sph_model);
 
     // Open up the binary file to write
-    FILE *bin = fopen(filename, "wb");
+    FILE *bin = fopen(binary_file_out, "wb");
 
     int n = Matrix_size_d(th);
     int n_bytes_per_row = sizeof(double) * LL;
@@ -31,7 +34,7 @@ void write_binary_plm(int lmax, const Matrix_d *th, const char *dataset) {
     Clock_toc(clock);
 
     fclose(bin);
-    printf("Wrote to binary file: %s in %lfs\n", filename, elapsed_time(clock));
+    printf("Wrote to binary file: %s in %lfs\n", binary_file_out, elapsed_time(clock));
 
     free(clock);
 }
@@ -40,8 +43,11 @@ Matrix_d *read_binary_plm(int lmax, int n_th, const char *binary_filename) {
 
     const size_t LL = (lmax + 1) * (lmax + 2) / 2;
 
+    printf("LL: %lu, n_theat: %d\n", LL, n_th);
+
     // Allocate a Matrix to store the contents
     Matrix_d *P_lm_th = Matrix_new_d(n_th, LL);
+    printf("[ read_binary_plm ] Allocated new matrix of size %lu x %lu\n", P_lm_th->nrows, P_lm_th->ncols);
 
     size_t n_bytes_per_row = sizeof(double) * LL;
 
@@ -93,9 +99,182 @@ Matrix_d *read_binary_plm_l(int lmax, int l, int n_theta, const char *binary_fil
     Clock_toc(clock);
 
     fclose(bin);
-    printf("Read in %d x %d P_L_th matrix from %s\n", n_theta, l, binary_filename);
+    printf("Read in %d x %d P_L_th matrix from %s\n", n_theta, l + 1, binary_filename);
 
     free(clock);
 
     return P_L_th;
+}
+
+// TODO THIS FUNCTION COMPLETELY IGNORE LF. NOT GOOD!!!!
+Precomp *newPrecomp(int L0, int LF, int Lmax, const data_iso *data, const char *plm_bin) {
+
+    // Allocate space
+    Precomp *precomp = (Precomp *) malloc(sizeof(*precomp));
+    if (precomp == NULL) 
+        errx(1, "[newPrecomp] Problem allocating Precomp\n");
+
+    precomp->L0 = L0;
+    precomp->LF = LF;
+    
+    // Check if file exists. If it doesn't, precompute the values
+    FILE *bin = fopen(plm_bin, "rb");
+    if (bin == NULL) {
+        // then the file doesn't exist, go ahead and create it.
+        write_binary_plm(Lmax, data->th, plm_bin);
+    }
+
+    // Now retrieve the proper values
+    precomp->Plm_th = read_binary_plm(Lmax, data->t, plm_bin);
+
+    precomp->sinth  = Matrix_new_d(1, data->t);
+    // m goes from 0 to L
+    precomp->cosmph = Matrix_new_d(Lmax + 1, data->p);
+    precomp->sinmph = Matrix_new_d(Lmax + 1, data->p);
+
+
+    // And compute sin(\theta), sin(m\theta), and cos(m\theta)
+    for (int ith = 0; ith < data->t; ith++) {
+        precomp->sinth->data[ith] = sin(data->th->data[ith]);
+    }
+
+    for (int m = 0; m <= Lmax; m++) {
+        for (int iph = 0; iph < data->p; iph++) {
+            *matacc_d(precomp->cosmph, m, iph) = cos(m * data->ph->data[iph]);
+            *matacc_d(precomp->sinmph, m, iph) = sin(m * data->ph->data[iph]);
+        }
+    }
+
+    return precomp;
+}
+
+void freePrecomp(Precomp *precomp) {
+
+    if (precomp == NULL) return;
+
+    if (precomp->Plm_th) Matrix_free_d(precomp->Plm_th);
+    if (precomp->sinth) Matrix_free_d(precomp->sinth);
+    if (precomp->sinmph) Matrix_free_d(precomp->sinmph);
+    if (precomp->sinmph) Matrix_free_d(precomp->cosmph);
+
+}
+
+/**========================================================================
+ *!                           Spherical Model
+ *========================================================================**/
+
+SphericalModel *newSphericalModel(int lmax, const data_iso *data, const Precomp *precomp) {
+
+    SphericalModel *model = (SphericalModel *) malloc(sizeof(*model));
+
+    if (model == NULL) 
+        errx(1, "Problems allocating new SphericalModel\n");
+
+    if (lmax < 0)
+        errx(1, "lmax [%d] must be a positive value\n", lmax);
+
+    model->lmax = lmax;
+    model->ll = (lmax + 1) * (lmax + 2) / 2;
+
+    // Need to allocate space for my Clm and Slm!!
+
+    model->C_lm = Matrix_new_d(1, model->ll);
+    model->S_lm = Matrix_new_d(1, model->ll);
+
+    // Wait a second...
+    // // Now let's compute the coefficients (all the coefficients for now)
+    // // We are not at the point where we can compute the coefficients individually,
+    // // although we _will_ get there
+
+    return model;
+}
+
+// Compute the value of Clm and Slm coefficients using the new Precomp data structure
+double modelComputeCSlmPrecomp(SphericalModel *model, const data_iso *data, const Precomp *precomp) {
+
+    const int lmax = model->lmax;
+    const int ll = model->ll;
+
+    Matrix_d *C_lm = model->C_lm, *S_lm = model->S_lm;
+    Matrix_d *P_lm_th = precomp->Plm_th;
+
+    printf("[ modelComputeCSlm ] :\n");
+
+    // Initialize integral values
+    double c_integral = 0;
+    double s_integral = 0;
+    int count = 0;
+
+    Clock *clock = Clock_new();
+    Clock_tic(clock);
+
+    for (int l = 0; l <= lmax; l++) {
+
+        for (int m = 0; m <= l; m++) {
+
+            // Now that I have the Associated legendre functions and the data efficiently loaded, let's write
+            // the code to approximate the integrals
+            c_integral = 0;
+            s_integral = 0;
+
+
+            for (int i = 0; i < data->N; i++) {
+
+                int i_th = i % data->t;
+                int i_ph = i / data->t;
+
+                // use the midpoint formula
+                c_integral += data->r[i] * matat_d(P_lm_th, i_th, PT(l, m)) * matat_d(precomp->cosmph, m, i_ph) * vecat_d(precomp->sinth, i_th);
+                s_integral += data->r[i] * matat_d(P_lm_th, i_th, PT(l, m)) * matat_d(precomp->sinmph, m, i_ph) * vecat_d(precomp->sinth, i_th);
+
+                count ++;
+            }
+
+            c_integral *= (data->dp * data->dt) / (2.0 * TWO_PI);
+            s_integral *= (data->dp * data->dt) / (2.0 * TWO_PI);
+
+            //! WARNING this is BLACK MAGIC. I don't know MATHEMATICALLY why this even works... but it does!
+            if (m != 0) {
+                c_integral *= 4;
+                s_integral *= 4;
+            }
+
+            vecset_d(C_lm, PT(l, m), c_integral);
+            vecset_d(S_lm, PT(l, m), s_integral);
+
+        }
+    }
+
+    Clock_toc(clock);
+    double time = elapsed_time(clock);
+    free(clock);
+
+    return time;
+
+}
+
+// Write the coefficients of a spherical model to CSV
+// Use the prefix to indicate what data set the spherical model was trained on
+// pass "" as type if you don't want to specify
+void SphericalModelToTXT(const SphericalModel *model, const char *type) {
+
+    // Open a csv file
+    char txt_file[100] = {0};
+
+    if (strlen(type) > 0)
+        sprintf(txt_file, "sph_%d_%s.txt", model->lmax, type);
+    else 
+        sprintf(txt_file, "sph_%d.txt", model->lmax);
+
+
+    FILE *txt_out = fopen(txt_file, "w");
+
+    for (size_t l = 0; l <= model->lmax; l++) {
+        for (size_t m = 0; m <= l; m++) {
+            fprintf(txt_out, "%lu\t%lu\t%lf\t%lf\n", l, m, model->C_lm->data[PT(l, m)], model->S_lm->data[PT(l, m)]);
+        }
+    }
+
+    fclose(txt_out);
+
 }

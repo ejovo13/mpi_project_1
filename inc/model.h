@@ -11,7 +11,16 @@
  *========================================================================**/
 #include "data.h"
 
+// Barebones model that contains ONLY the C_lm and S_lm 
+// coefficients (plus bookkeeping fields)
+typedef struct SphericalModel {
 
+    size_t lmax;
+    size_t ll;
+    Matrix_d *C_lm;
+    Matrix_d *S_lm;
+
+} SphericalModel;
 
 typedef struct spherical_model {
     size_t lmax;
@@ -222,5 +231,10 @@ double compute_gradient_slm_points(const iso_model *iso, const Matrix_d *slm, co
 
 // Compute the mean squared error of a model
 double compute_mse(const iso_model *model);
+
+
+
+
+
 
 #endif // GEODESY_MODEL_H

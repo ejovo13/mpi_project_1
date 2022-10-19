@@ -245,9 +245,30 @@ void free_data_iso(data_iso *data) {
     if (data->r != NULL) 
         free(data->r);
 
-    if (data->l_indices != NULL)
-        free(data->l_indices);
+    // if (data->l_indices != NULL)
+    //     free(data->l_indices);
 
-    if (data->m_indices != NULL)
-        free(data->m_indices);
+    // if (data->m_indices != NULL)
+    //     free(data->m_indices);
+}
+
+void head_data(const data_iso *data) {
+
+    printf("data_iso @%x: { .N = %d, .t = %d, .p = %d, \n",
+        data, data->N, data->t, data->p);
+
+    printf("\t\t      .th(1:10) = ");
+    Vector_print_head_d(data->th, 10);
+    printf("\t\t      .ph(1:10) = ");
+    Vector_print_head_d(data->ph, 10);
+    printf("\t\t      .r(1:10)  = |");
+
+    for (int i = 0; i < 9; i++) {
+        printf("%d ", data->r[i]);
+    }
+    printf("%d |\n", data->r[9]);
+    printf("\t\t      .dt = %lf, .dp = %lf\n", data->dt, data->dp);
+    printf("\t\t    }\n");
+    // Matrix_print_d(data->th);
+
 }
