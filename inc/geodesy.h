@@ -18,5 +18,6 @@
 #include "model.h"
 #include "phase_1.h"
 #include "phase_2.h"
+#include "phase_3.h"
 
 #endif // GEODESY_GEODESY_H
