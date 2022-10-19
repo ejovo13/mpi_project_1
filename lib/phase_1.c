@@ -125,6 +125,7 @@ Precomp *newPrecomp(int L0, int LF, int Lmax, const data_iso *data, const char *
     }
 
     // Now retrieve the proper values
+    // Ideally I should only be loading L0 - LF into memory
     precomp->Plm_th = read_binary_plm(Lmax, data->t, plm_bin);
 
     precomp->sinth  = Matrix_new_d(1, data->t);
@@ -276,5 +277,68 @@ void SphericalModelToTXT(const SphericalModel *model, const char *type) {
     }
 
     fclose(txt_out);
+
+}
+
+// Write the coefficients of a spherical model to CSV
+// Use the prefix to indicate what data set the spherical model was trained on
+// pass "" as type if you don't want to specify
+// Binary format: LL * sizeof(double) bytes dedicated to the first LL C coefficients,
+// then           LL * sizeof(double) bytes dedicated to the first LL S coefficients 
+void SphericalModelToBIN(const SphericalModel *model, const char *type) {
+
+    // Open a csv file
+    char bin_file[100] = {0};
+
+    if (strlen(type) > 0)
+        sprintf(bin_file, "sph_%d_%s.bin", model->lmax, type);
+    else 
+        sprintf(bin_file, "sph_%d.bin", model->lmax);
+
+
+    FILE *bin_out = fopen(bin_file, "wb");
+
+    const size_t n_bytes = sizeof(double) * model->ll;
+
+    fwrite(model->C_lm->data, n_bytes, 1, bin_out);
+    fwrite(model->S_lm->data, n_bytes, 1, bin_out);
+
+    fclose(bin_out);
+
+}
+
+SphericalModel *loadSphericalModel(const char *bin_in, int lmax) {
+
+    if (lmax < 0) errx(1, "lmax [%d] must be positive\n");
+
+    // Check to make sure file exists
+    FILE *bin = fopen(bin_in, "rb");
+    if (bin == NULL) errx(1, "Binary file %s does not exist\n", bin_in);
+
+    SphericalModel *model = (SphericalModel *) malloc(sizeof(*model));
+
+    if (model == NULL) errx(1, "Error allocating SphericalModel\n");
+
+    // Allocate space for model
+    model->lmax = lmax;
+    model->ll = (lmax + 1) * (lmax + 2) / 2;
+    model->C_lm = Matrix_new_d(1, model->ll);
+    model->S_lm = Matrix_new_d(1, model->ll);
+
+    const size_t n_bytes = sizeof(double) * model->ll;
+
+    fread(model->C_lm->data, n_bytes, 1, bin);
+    fread(model->S_lm->data, n_bytes, 1, bin);
+
+    return model;
+}
+
+
+void freeSphericalModel(SphericalModel *model) {
+
+    if (model == NULL) return;
+
+    if (model->C_lm) Matrix_free_d(model->C_lm);
+    if (model->S_lm) Matrix_free_d(model->S_lm);
 
 }

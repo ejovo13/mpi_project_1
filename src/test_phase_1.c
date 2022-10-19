@@ -108,9 +108,18 @@ void t_precomp_small() {
     Vector_print_head_d(model->C_lm, 10);
     Vector_print_head_d(model->S_lm, 10);
 
+    // Write the model to bin
+    SphericalModelToBIN(model, "small");
+    // Free the contents in RAM
+    freeSphericalModel(model);
+
+    // Now read the file into memory
+    model = loadSphericalModel("sph_100_small.bin", LF);
+
+    // And write it to text file
     SphericalModelToTXT(model, "small");
 
-
+    freeSphericalModel(model);
     freePrecomp(precomp);
 
 }

@@ -76,7 +76,13 @@ double modelComputeCSlmPrecomp(SphericalModel *model, const data_iso *data, cons
 void SphericalModelToTXT(const SphericalModel *model, const char *type);
 
 // Write the coefficients of a spherical model to a binary file
-// void SphericalModelToBIN
+// Use the prefix to indicate what data set the spherical model was trained on
+void SphericalModelToBIN(const SphericalModel *model, const char *type);
+
+// Load SphericalModel from a binary file
+SphericalModel *loadSphericalModel(const char *bin_in, int lmax);
+
+void freeSphericalModel(SphericalModel *model);
 
 
 
