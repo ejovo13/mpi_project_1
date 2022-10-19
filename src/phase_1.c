@@ -5,6 +5,21 @@
 #include <getopt.h>
 #include <err.h>
 
+/**========================================================================
+ * ?                          phase_1.c
+ * @brief   : Precompute Associated Legendre values Plm(cos\theta) for all
+ *            values of theta for a dataset given ntheta
+ * 
+ *  example: 
+ *            ./phase1 --ntheta 180 --lmax 500 --out ETOPO1_small_P500.bin         
+ *  
+ * 
+ * @details : 
+ * @author  : Evan Voyles
+ * @email   : ejovo13@yahoo.com
+ * @date    : 2022-10-19
+ *========================================================================**/
+
 #include "geodesy.h"
 
 int lmax = -1;
@@ -17,7 +32,7 @@ void usage(char ** argv)
         printf("Options:\n");
         printf("--ntheta N                      number of theta in discretization\n");
         printf("--lmax L                        degree of the stored binary file\n");
-        printf("--binary_out FILE               name of the output binary file\n");
+        printf("--out FILE                      name of the output binary file\n");
         printf("\n");
         exit(0);
 }
@@ -27,7 +42,7 @@ void process_command_line_options(int argc, char ** argv)
         struct option longopts[] = {
                 {"ntheta", required_argument, NULL, 'n'},
                 {"lmax", required_argument, NULL, 'l'},
-                {"name", required_argument, NULL, 'b'},
+                {"out", required_argument, NULL, 'o'},
                 {NULL, 0, NULL, 0}
         };
         char ch;
@@ -36,7 +51,7 @@ void process_command_line_options(int argc, char ** argv)
                 case 'n':
                         ntheta = atoi(optarg);
                         break;
-                case 'b':
+                case 'o':
                         binary_out = optarg;
                         break;
                 case 'l':
