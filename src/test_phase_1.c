@@ -2,13 +2,33 @@
 
 void t_small_read_write();
 void t_ultra_read();
-void t_precomp_small();
+void t_comp_small(int l_model);
 
 int main() {
 
     // t_small_read_write();
     // t_ultra_read();
-    t_precomp_small();
+
+    // t_comp_small(5);
+    // t_comp_small(10);
+    // t_comp_small(20);
+    // t_comp_small(30);
+    // t_comp_small(50);
+    // t_comp_small(100);
+    // t_comp_small(150);
+    // t_comp_small(175);
+    // t_comp_small(190);
+    // t_comp_small(195);
+    // t_comp_small(196);
+    // t_comp_small(197);
+    // t_comp_small(198);
+    // t_comp_small(199);
+    // t_comp_small(200);
+    // t_comp_small(201);
+    // t_comp_small(250);
+    // t_comp_small(300);
+    // t_comp_small(400);
+    t_comp_small(500);
 
     return 0;
 }
@@ -78,48 +98,74 @@ void t_ultra_read() {
     // Matrix_print_row_d(plm_ultra, );
 }
 
-void t_precomp_small() {
+void t_comp_small(int l_model) {
 
     data_iso *data_small = get_data_small();
-    data_iso *data_med = get_data_med();
-
     head_data(data_small);
-    head_data(data_med);
+
+    // data_iso *data_med = get_data_med();
+    // head_data(data_med);
 
     // Now that we have a data file, go ahead and create a Precomp object
 
     // for now, keep L0 as 0 by default
     const int L0 = 0;
-    const int LF = 100; // only load in the first 100 values of L
+    const int LF = l_model; // only load in the first l_model values of L
+
     const int LMAX = 1000; // max of the binary data set
     const char *plm_bin = "ETOPO1_small_P1000.bin";
 
-    Precomp *precomp = newPrecomp(L0, LF, LMAX, data_small, plm_bin);
+    // const int LMAX = 50;
+    // const char *plm_bin = "ETOPO1_small_P50.bin";
 
     // Using these precomputed values, go ahead and compute the coefficients, storing them
     // in a brand new model
-    SphericalModel *model = newSphericalModel(LF, data_small, precomp);    
+    SphericalModel *model = NULL;
+    Precomp *precomp = NULL;
+    char coeff_file_bin[50] = {0};
+    sprintf(coeff_file_bin, "sph_%d_small.bin", LF);
 
-    double time = modelComputeCSlmPrecomp(model, data_small, precomp);
+    // if the file already exists, then load it. If not, precompute it again.
+    /**========================================================================
+     *!                        Precomp 
+     *========================================================================**/ 
 
-    printf("Computed coefficients for L = %d in %lfs\n", LF, time);
+    precomp = newPrecomp(L0, LF, LMAX, data_small, plm_bin);
+
+    FILE *test_open = fopen(coeff_file_bin, "rb");
+    if (test_open == NULL) {
+
+        printf("%s not found, computing Clm and Slm coefficients\n", coeff_file_bin);
+        model = newSphericalModel(LF, data_small, precomp);    
+        double time = modelComputeCSlmPrecomp(model, data_small, precomp);
+        printf("Computed coefficients for L = %d in %lfs\n", LF, time);
+        SphericalModelToBIN(model, "small");
+
+    } else {
+
+        // Model file coeff_file_bin already exists, so load from it
+        fclose(test_open);
+        model = loadSphericalModel(coeff_file_bin, LF);
+
+    }
+
+    // freePrecomp(precomp);
 
     // Now go ahead and print the first 10 coefficients to the screen
     Vector_print_head_d(model->C_lm, 10);
     Vector_print_head_d(model->S_lm, 10);
 
-    // Write the model to bin
-    SphericalModelToBIN(model, "small");
-    // Free the contents in RAM
-    freeSphericalModel(model);
-
-    // Now read the file into memory
-    model = loadSphericalModel("sph_100_small.bin", LF);
-
-    // And write it to text file
+    // Output to a text file for visual inspection
     SphericalModelToTXT(model, "small");
 
     freeSphericalModel(model);
-    freePrecomp(precomp);
+
+    // Write the model to bin
+    // Free the contents in RAM
+    // freeSphericalModel(model);
+    // model = loadSphericalModel(coeff_file_bin, LF);
+
+    // Now read the file into memory
+    // And write it to text file
 
 }

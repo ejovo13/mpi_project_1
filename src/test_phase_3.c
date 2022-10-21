@@ -14,6 +14,13 @@ typedef struct {
 
 } ErrorReport;
 
+// typedef struct {
+
+//     int sample_size;
+//     ErrorReport; 
+
+// } StochasticErrorReport;
+
 // assuming the file is opened, add a line
 void add_line_error_report(int l, ErrorReport report, FILE *file) {
     fprintf(file, "%d,%lf,%lf,%lf,%lf,%lf\n", l, report.avg_error, report.max_error, report.min_error, report.mse, report.total_error);
@@ -24,6 +31,14 @@ void add_line_error_report(int l, ErrorReport report, FILE *file) {
 // In this phase we want to load in the model and compare the values with a particulary data set.
 // Return a Matrix_d in the form [avg_error, max_error, min_error, mse, total_error]
 ErrorReport t_validate_predictions_small(int l_model);
+
+// Predict the error of a model via random sampling of the data points.
+// Reduces the time of computation from N to n
+StochasticErrorReport t_stochastic_predictions_small(int l_model, int n); 
+
+
+
+
 
 int main() {
 
@@ -71,6 +86,8 @@ ErrorReport t_validate_predictions_small(int l_model) {
     Precomp *precomp = newPrecomp(L0, LF, LMAX_BIN, data, binary_plm); 
     Matrix_f *f_hat = NULL;
 
+    // The model is supposedly being computed in phase_1. This code is redundant
+    // TODO remove compute model section
     /**========================================================================
      *!                           Compute model
      *========================================================================**/
@@ -149,3 +166,82 @@ ErrorReport t_validate_predictions_small(int l_model) {
 
     return report;
 }
+
+// Let's leave this alone for now. We are going to perform statistic analysis in R.
+// StochasticErrorReport t_stochastic_predictions_small(int l_model, int n) {
+
+//     // Always use the P1000 data set and small resolution
+//     const char *binary_plm  = "ETOPO1_small_P1000.bin";
+//     // const char *binary_cslm = "sph_100_small.bin"; 
+//     // const char *binary_prediction_out = "fhat_100_small.bin";
+
+//     char binary_cslm[100] = {0};
+//     char binary_prediction_out[100] = {0};
+
+//     sprintf(binary_cslm, "sph_%d_small.bin", l_model);
+//     sprintf(binary_prediction_out, "fhat_%d_small.bin", l_model);
+
+//     data_iso *data = get_data_small();
+
+//     const int L0 = 0;
+//     const int LF = l_model;
+//     const int LMAX_BIN = 1000;
+
+//     Clock *clock = Clock_new();
+//     Precomp *precomp = newPrecomp(L0, LF, LMAX_BIN, data, binary_plm); 
+//     Matrix_f *f_hat = NULL;
+
+//     /**========================================================================
+//      *!                   Load computed model, produce estimations
+//      *========================================================================**/
+//     Clock_tic(clock);
+//     SphericalModel *model = loadSphericalModel(binary_cslm, LF);
+//     Clock_toc(clock);
+//     printf("Loaded model in %lfs\n", elapsed_time(clock));
+
+//     //! Ok, so our predictions have actually already been computed, and this
+//     //! test file is just for seeing how the statistics behave
+//     Clock_tic(clock);
+//     f_hat = compute_prediction(model, precomp, data);
+//     Clock_toc(clock);
+//     printf("Time to compute prediction: %lfs\n", elapsed_time(clock));
+//     save_prediction(f_hat, binary_prediction_out);
+
+
+
+
+//     // Now go through and compute the mse.
+//     double abs_error = 0;
+//     double sq_error  = 0;
+//     double err       = 0;
+//     double min_error = fabs((float) data->r[0] - f_hat->data[0]);
+//     double max_error = fabs((float) data->r[0] - f_hat->data[0]);
+//     // for (int i = 0; i < data->N; i++) {
+//     for (int i = 0; i < data->N; i++) {
+//         // printf("i: %d (%d - %f)\n", i, data->r[i], f_hat->data[i]);
+//         err = ((float) data->r[i]) - f_hat->data[i];
+//         abs_error += fabs(err);
+//         sq_error  += err * err;
+//         if (fabs(err) < min_error) min_error = fabs(err);
+//         if (fabs(err) > max_error) max_error = fabs(err);
+//     }
+
+//     printf("abs_error:    %lf\n", abs_error);
+//     printf("sq_error:     %lf\n", sq_error);
+//     printf("MSE:          %lf\n", sq_error / data->N);
+//     printf("Average err:  %lf\n", abs_error / data->N);
+
+//     ErrorReport report;
+
+//     report.avg_error = abs_error / data->N;
+//     report.max_error = max_error;
+//     report.min_error = min_error;
+//     report.mse = sq_error / data->N;
+//     report.total_error = abs_error;
+
+//     freePrecomp(precomp);
+//     freeSphericalModel(model);
+//     Matrix_free_f(f_hat);
+
+//     return report;
+// }
