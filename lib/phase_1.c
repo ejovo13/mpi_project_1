@@ -43,11 +43,11 @@ Matrix_d *read_binary_plm(int lmax, int n_th, const char *binary_filename) {
 
     const size_t LL = (lmax + 1) * (lmax + 2) / 2;
 
-    printf("LL: %lu, n_theat: %d\n", LL, n_th);
+    printf("[read_binary_plm] LL: %lu, n_theta: %d\n", LL, n_th);
 
     // Allocate a Matrix to store the contents
     Matrix_d *P_lm_th = Matrix_new_d(n_th, LL);
-    printf("[ read_binary_plm ] Allocated new matrix of size %lu x %lu\n", P_lm_th->nrows, P_lm_th->ncols);
+    printf("[read_binary_plm] Allocated new matrix of size %lu x %lu\n", P_lm_th->nrows, P_lm_th->ncols);
 
     size_t n_bytes_per_row = sizeof(double) * LL;
 
@@ -59,7 +59,7 @@ Matrix_d *read_binary_plm(int lmax, int n_th, const char *binary_filename) {
     }
 
     fclose(bin);
-    printf("Read from binary file: %s\n", binary_filename);
+    printf("[read_binary_plm] Read from binary file: %s\n", binary_filename);
 
     return P_lm_th;
 
@@ -263,7 +263,7 @@ void SphericalModelToTXT(const SphericalModel *model, const char *type) {
     char txt_file[100] = {0};
 
     if (strlen(type) > 0)
-        sprintf(txt_file, "sph_%d_%s.txt", model->lmax, type);
+        sprintf(txt_file, "sph_%s_%d.txt", type, model->lmax);
     else 
         sprintf(txt_file, "sph_%d.txt", model->lmax);
 
@@ -275,6 +275,8 @@ void SphericalModelToTXT(const SphericalModel *model, const char *type) {
             fprintf(txt_out, "%lu\t%lu\t%lf\t%lf\n", l, m, model->C_lm->data[PT(l, m)], model->S_lm->data[PT(l, m)]);
         }
     }
+
+    printf("[SphericalModelToTXT] wrote model to %s\n", txt_file);
 
     fclose(txt_out);
 
@@ -291,10 +293,9 @@ void SphericalModelToBIN(const SphericalModel *model, const char *type) {
     char bin_file[100] = {0};
 
     if (strlen(type) > 0)
-        sprintf(bin_file, "sph_%d_%s.bin", model->lmax, type);
+        sprintf(bin_file, "sph_%s_%d.bin", type, model->lmax);
     else 
         sprintf(bin_file, "sph_%d.bin", model->lmax);
-
 
     FILE *bin_out = fopen(bin_file, "wb");
 
