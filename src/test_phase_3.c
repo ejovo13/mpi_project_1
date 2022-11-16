@@ -32,9 +32,10 @@ void add_line_error_report(int l, ErrorReport report, FILE *file) {
 // Return a Matrix_d in the form [avg_error, max_error, min_error, mse, total_error]
 ErrorReport t_validate_predictions_small(int l_model);
 
-// Predict the error of a model via random sampling of the data points.
-// Reduces the time of computation from N to n
-StochasticErrorReport t_stochastic_predictions_small(int l_model, int n); 
+// Simply load the f_hat of a model of degree `l_model`, compute the difference between
+// the prediction and the true function value, then output the difference to a csv file
+// for statistical analysis in R
+void t_write_predictions_small(int l_model); 
 
 
 
@@ -44,21 +45,28 @@ int main() {
 
     const int indices_array[] = {5, 10, 20, 30, 50, 100, 150, 175, 190, 195, 196, 197, 198, 199, 200, 201, 250, 300, 400, 500};
 
-    // Let the compiler help you out with counting this one
+    // // Let the compiler help you out with counting this one
     const int n_indices = 20;
 
     Matrix_i *ind = Matrix_from_i(indices_array, 1, n_indices);
-    ErrorReport err_report;
+    // ErrorReport err_report;
 
-    FILE *err_report_out = fopen("error_report.csv", "w");
+    // FILE *err_report_out = fopen("error_report.csv", "w");
 
-    fprintf(err_report_out, "l,avg_error,max_error,min_error,mse,total_error\n");
+    // fprintf(err_report_out, "l,avg_error,max_error,min_error,mse,total_error\n");
+    // for (int i = 0; i < n_indices; i++) {
+    //     err_report = t_validate_predictions_small(ind->data[i]);
+    //     add_line_error_report(ind->data[i], err_report, err_report_out);
+    // }
+
+    // fclose(err_report_out);
+
+
+    // Now go ahead and write prediction files in csv format
+
     for (int i = 0; i < n_indices; i++) {
-        err_report = t_validate_predictions_small(ind->data[i]);
-        add_line_error_report(ind->data[i], err_report, err_report_out);
+        t_write_predictions_small(ind->data[i]);
     }
-
-    fclose(err_report_out);
 
     return 0;
 }
@@ -166,6 +174,35 @@ ErrorReport t_validate_predictions_small(int l_model) {
 
     return report;
 }
+
+void t_write_predictions_small(int l_model) {
+
+    // Load data
+    const data_iso *data = get_data_small();
+
+    // Load f_hat
+    char binary_prediction_in[100] = {0};
+    char diff_out[100] = {0};
+
+    sprintf(binary_prediction_in, "fhat_%d_small.bin", l_model);
+    sprintf(diff_out, "diff_%d_small.csv", l_model);
+    Matrix_f *f_hat = load_prediction(binary_prediction_in, data->N);
+
+    // Compute the difference and store it in a matrix
+    float diff = 0;
+
+    FILE *diff_csv = fopen(diff_out, "w");
+    fprintf(diff_csv, "diff\n");
+
+    for (int i = 0; i < data->N; i++) {
+        diff = f_hat->data[i] - (float) data->r[i];
+        fprintf(diff_csv, "%f\n", diff);
+    }
+
+    fclose(diff_csv);
+
+}
+
 
 // Let's leave this alone for now. We are going to perform statistic analysis in R.
 // StochasticErrorReport t_stochastic_predictions_small(int l_model, int n) {

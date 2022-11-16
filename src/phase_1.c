@@ -10,7 +10,7 @@
  * @brief   : Precompute Associated Legendre values Plm(cos\theta) for all
  *            values of theta for a dataset given ntheta
  * 
- *  example: 
+ * @example: 
  *            ./phase1 --ntheta 180 --lmax 500 --out ETOPO1_small_P500.bin         
  *  
  * 
