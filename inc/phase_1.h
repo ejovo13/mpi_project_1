@@ -11,12 +11,15 @@
  * @date    : 2022-10-17
  *========================================================================**/
 #include <stdio.h>
+#include <omp.h>
 
 #include "constants.h"
 #include "data.h"
 #include "harmonics.h"
 #include "learn.h"
 #include "model.h"
+#include "mpi_util.h"
+
 
 // Compute the values [P00 P10 P11 .. Plm](cos \th) for all discrete values of theta
 // and then store the results in a binary file whose first (lmax + 1)(lmax + 2)/2 * 8 bytes correspond to the 
@@ -70,6 +73,10 @@ SphericalModel *newSphericalModel(int lmax, const data_iso *data, const Precomp 
 
 double modelComputeCSlmPrecomp(SphericalModel *model, const data_iso *data, const Precomp *precomp);
 
+double modelComputeCSlmPrecompOMP(SphericalModel *model, const data_iso *data, const Precomp *precomp);
+
+double modelComputeCSlmPrecompOMP2(SphericalModel *model, const data_iso *data, const Precomp *precomp);
+
 // Write the coefficients of a spherical model to CSV
 // Use the prefix to indicate what data set the spherical model was trained on
 // pass "" as type if you don't want to specify
@@ -84,6 +91,90 @@ SphericalModel *loadSphericalModel(const char *bin_in, int lmax);
 
 void freeSphericalModel(SphericalModel *model);
 
+// Compute AND SET the Clm and Slm pair for a given l and m
+static inline void computeCSPair(int l, int m, const data_iso *data, const Precomp *precomp, Matrix_d *C_lm, Matrix_d *S_lm, Matrix_d *P_lm_th) {
 
+    // Now that I have the Associated legendre functions and the data efficiently loaded, let's write
+    // the code to approximate the integrals
+    double c_integral = 0;
+    double s_integral = 0;
+    int count = 0;
+
+    for (int i = 0; i < data->N; i++) {
+
+        int i_th = i % data->t;
+        int i_ph = i / data->t;
+
+        // use the midpoint formula
+        c_integral += data->r[i] * matat_d(P_lm_th, i_th, PT(l, m)) * matat_d(precomp->cosmph, m, i_ph) * vecat_d(precomp->sinth, i_th);
+        s_integral += data->r[i] * matat_d(P_lm_th, i_th, PT(l, m)) * matat_d(precomp->sinmph, m, i_ph) * vecat_d(precomp->sinth, i_th);
+
+        count ++;
+    }
+
+    c_integral *= (data->dp * data->dt) / (2.0 * TWO_PI);
+    s_integral *= (data->dp * data->dt) / (2.0 * TWO_PI);
+
+    //! WARNING this is BLACK MAGIC. I don't know MATHEMATICALLY why this even works... but it does!
+    if (m != 0) {
+        c_integral *= 4;
+        s_integral *= 4;
+    }
+
+    vecset_d(C_lm, PT(l, m), c_integral);
+    vecset_d(S_lm, PT(l, m), s_integral);
+
+}
+
+// Compute AND SET the Clm and Slm pair for a given l and m using OpenMP
+static inline void computeCSPairOMP(int l, int m, const data_iso *data, const Precomp *precomp, Matrix_d *C_lm, Matrix_d *S_lm, Matrix_d *P_lm_th) {
+
+    // Now that I have the Associated legendre functions and the data efficiently loaded, let's write
+    // the code to approximate the integrals
+    double c_integral = 0, c_partial = 0;
+    double s_integral = 0, s_partial = 0;
+    int count = 0;
+
+    #pragma omp parallel private(c_partial, s_partial) shared(c_integral, s_integral)
+    {
+
+        #pragma omp for 
+        for (int i = 0; i < data->N; i++) {
+
+            int i_th = i % data->t;
+            int i_ph = i / data->t;
+
+            // use the midpoint formula
+            c_partial += data->r[i] * matat_d(P_lm_th, i_th, PT(l, m)) * matat_d(precomp->cosmph, m, i_ph) * vecat_d(precomp->sinth, i_th);
+            s_partial += data->r[i] * matat_d(P_lm_th, i_th, PT(l, m)) * matat_d(precomp->sinmph, m, i_ph) * vecat_d(precomp->sinth, i_th);
+
+            count ++;
+        }
+
+        #pragma omp critical
+        {
+            c_integral += c_partial;
+            s_integral += s_partial;
+        }
+    }
+
+    c_integral *= (data->dp * data->dt) / (2.0 * TWO_PI);
+    s_integral *= (data->dp * data->dt) / (2.0 * TWO_PI);
+
+    //! WARNING this is BLACK MAGIC. I don't know MATHEMATICALLY why this even works... but it does!
+    if (m != 0) {
+        c_integral *= 4;
+        s_integral *= 4;
+    }
+
+    vecset_d(C_lm, PT(l, m), c_integral);
+    vecset_d(S_lm, PT(l, m), s_integral);
+
+}
+
+/**========================================================================
+ *!                           MPI Implementations
+ *========================================================================**/
+double modelComputeCSlmPrecompMPI(SphericalModel *model, const data_iso *data, const Precomp *precomp, int world_size, int this_rank);
 
 #endif //GEODESY_PHASE_1_H

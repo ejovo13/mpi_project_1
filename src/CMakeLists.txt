@@ -16,6 +16,8 @@ add_geodesy(reduce_dataset_size)
 add_geodesy(benchmark)
 add_geodesy(mse_analysis)
 add_geodesy(new_model)
+add_geodesy(new_model_omp)
+add_geodesy(new_model_omp2)
 
 # add_executable(mejovo model_ejovo.c)
 # add_executable(old_model old_model.c)

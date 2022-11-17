@@ -9,6 +9,8 @@
  * @email   : ejovo13@yahoo.com
  * @date    : 2022-10-16
  *========================================================================**/
+#include <math.h>
+
 #include "data.h"
 
 // Barebones model that contains ONLY the C_lm and S_lm 
@@ -54,6 +56,40 @@ typedef struct iso_trained {
 
 } iso_trained;
 
+// Simple structure that encodes the tuple (l, m)
+typedef struct lm_pair {
+    int l;
+    int m;
+} lm_pair;
+
+static inline int PLM(int l, int m, int th, int nrows) {
+    int index = PT(l, m);
+    return th * nrows + index; 
+}
+
+/**
+ * @brief Convert a 0-based index i into an (l, m) pair
+ * 
+ * Using a simple completing the square technique, solve for the value of l and then
+ * use that information to compute the m index
+ * 
+ * @param i 
+ * @return lm_pair 
+ */
+static inline lm_pair i_to_lm(int i) {
+
+    double two_LL = (i + 1) * 2;
+    double lmax_guess = sqrt(two_LL + 0.25) - 1.5;
+    double l = ceil(lmax_guess);
+
+    double LL_prev = l * (l + 1) / 2;
+    double m = i - LL_prev;
+
+    // Creationg of lm_pair
+    lm_pair pair = {.l = l, .m = m};
+
+    return pair;
+}
 
 spherical_model *copy_spherical_model(const spherical_model *rhs);
 
@@ -62,10 +98,6 @@ iso_model *copy_iso (const iso_model *rhs);
 // copy the current state of this iso, deep copying all of its components
 iso_trained *copy_trained_model (const iso_trained *rhs);
 
-static inline int PLM(int l, int m, int th, int nrows) {
-    int index = PT(l, m);
-    return th * nrows + index; 
-}
 
 // Assume that the model has already been initialized
 /**========================================================================

@@ -34,7 +34,7 @@ void write_binary_plm(int lmax, const Matrix_d *th, const char *binary_file_out)
     Clock_toc(clock);
 
     fclose(bin);
-    printf("Wrote to binary file: %s in %lfs\n", binary_file_out, elapsed_time(clock));
+    printf("[write_binary_plm] Wrote to binary file: %s in %lfs\n", binary_file_out, elapsed_time(clock));
 
     free(clock);
 }
@@ -199,50 +199,16 @@ double modelComputeCSlmPrecomp(SphericalModel *model, const data_iso *data, cons
     Matrix_d *C_lm = model->C_lm, *S_lm = model->S_lm;
     Matrix_d *P_lm_th = precomp->Plm_th;
 
-    printf("[ modelComputeCSlm ] :\n");
-
-    // Initialize integral values
-    double c_integral = 0;
-    double s_integral = 0;
-    int count = 0;
+    printf("[modelComputeCSlm] Computing coefficients in serial\n");
 
     Clock *clock = Clock_new();
     Clock_tic(clock);
 
+    // A single iteration of this loop can be abstracted away as:
+    // computeCSPair(l, m, P_lm_th, precomp)
     for (int l = 0; l <= lmax; l++) {
-
         for (int m = 0; m <= l; m++) {
-
-            // Now that I have the Associated legendre functions and the data efficiently loaded, let's write
-            // the code to approximate the integrals
-            c_integral = 0;
-            s_integral = 0;
-
-
-            for (int i = 0; i < data->N; i++) {
-
-                int i_th = i % data->t;
-                int i_ph = i / data->t;
-
-                // use the midpoint formula
-                c_integral += data->r[i] * matat_d(P_lm_th, i_th, PT(l, m)) * matat_d(precomp->cosmph, m, i_ph) * vecat_d(precomp->sinth, i_th);
-                s_integral += data->r[i] * matat_d(P_lm_th, i_th, PT(l, m)) * matat_d(precomp->sinmph, m, i_ph) * vecat_d(precomp->sinth, i_th);
-
-                count ++;
-            }
-
-            c_integral *= (data->dp * data->dt) / (2.0 * TWO_PI);
-            s_integral *= (data->dp * data->dt) / (2.0 * TWO_PI);
-
-            //! WARNING this is BLACK MAGIC. I don't know MATHEMATICALLY why this even works... but it does!
-            if (m != 0) {
-                c_integral *= 4;
-                s_integral *= 4;
-            }
-
-            vecset_d(C_lm, PT(l, m), c_integral);
-            vecset_d(S_lm, PT(l, m), s_integral);
-
+            computeCSPair(l, m, data, precomp, C_lm, S_lm, P_lm_th);
         }
     }
 
@@ -253,6 +219,90 @@ double modelComputeCSlmPrecomp(SphericalModel *model, const data_iso *data, cons
     return time;
 
 }
+
+// Compute the value of Clm and Slm coefficients using the new Precomp data structure and
+// using a parallel loop with OpenMP
+double modelComputeCSlmPrecompOMP(SphericalModel *model, const data_iso *data, const Precomp *precomp) {
+
+    const int lmax = model->lmax;
+    const int ll = model->ll;
+
+    Matrix_d *C_lm = model->C_lm, *S_lm = model->S_lm;
+    Matrix_d *P_lm_th = precomp->Plm_th;
+
+    printf("[modelComputeCSlm] Computing coefficients in parallel\n");
+
+    Clock *clock = Clock_new();
+    Clock_tic(clock);
+
+    // A single iteration of this loop can be abstracted away as:
+    // computeCSPair(l, m, P_lm_th, precomp)
+
+#pragma omp parallel
+{
+    if (omp_get_thread_num() == 1) printf("[modelComputeCSlmPrecompOMP] computing CSlm values using %d threads\n", omp_get_num_threads());
+}
+
+
+    for (int l = 0; l <= lmax; l++) {
+        for (int m = 0; m <= l; m++) {
+            computeCSPairOMP(l, m, data, precomp, C_lm, S_lm, P_lm_th);
+        }
+    }
+
+    Clock_toc(clock);
+    double time = elapsed_time(clock);
+    free(clock);
+
+    return time;
+
+}
+
+double modelComputeCSlmPrecompOMP2(SphericalModel *model, const data_iso *data, const Precomp *precomp) {
+
+    const int lmax = model->lmax;
+    const int ll = model->ll;
+
+    Matrix_d *C_lm = model->C_lm, *S_lm = model->S_lm;
+    Matrix_d *P_lm_th = precomp->Plm_th;
+
+    printf("[modelComputeCSlm] Computing coefficients in parallel\n");
+
+    Clock *clock = Clock_new();
+    Clock_tic(clock);
+
+    #pragma omp parallel
+    {
+        if (omp_get_thread_num() == 0) printf("[modelComputeCSlmPrecompOMP2] computing CSlm values using %d threads\n", omp_get_num_threads());
+
+        #pragma omp for
+        for (int i = 0; i < ll; i++) {
+            lm_pair lm = i_to_lm(i);
+            computeCSPair(lm.l, lm.m, data, precomp, C_lm, S_lm, P_lm_th);
+        }
+    }
+
+    Clock_toc(clock);
+    double time = elapsed_time(clock);
+    free(clock);
+
+    return time;
+
+}
+
+// Compute the value of Clm and Slm that are assigned to this process.
+double modelComputeCSlmPrecompMPI(SphericalModel *model, const data_iso *data, const Precomp *precomp, int world_size, int this_rank) {
+
+    // Total work is LL
+    const int lmax = model->lmax;
+    const int ll = model->ll;
+
+    // Go ahead and compute the workload needed by this rank
+    // Every processor will compute this matrix but it is trivially small
+    Matrix_i *start_end = compute_startend_array(ll, world_size);
+}
+
+
 
 // Write the coefficients of a spherical model to CSV
 // Use the prefix to indicate what data set the spherical model was trained on

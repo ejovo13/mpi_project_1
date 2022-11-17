@@ -121,7 +121,7 @@ int main(int argc, char **argv) {
 
         printf("[main] %s not found, computing Clm and Slm coefficients\n", coeff_file_bin);
         model = newSphericalModel(lmodel, data, precomp);    
-        double time = modelComputeCSlmPrecomp(model, data, precomp);
+        double time = modelComputeCSlmPrecompOMP2(model, data, precomp);
         printf("[main] Computed coefficients for L = %d in %lfs\n", lmodel, time);
         SphericalModelToBIN(model, size_dataset);
 
