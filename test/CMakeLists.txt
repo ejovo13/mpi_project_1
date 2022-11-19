@@ -9,3 +9,6 @@ endfunction()
 
 add_geodesy_test(i_to_lm)
 add_geodesy_test(omp_proc_available)
+
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/run_proc.sh 
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
