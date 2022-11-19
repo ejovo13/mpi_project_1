@@ -290,6 +290,39 @@ double modelComputeCSlmPrecompOMP2(SphericalModel *model, const data_iso *data, 
 
 }
 
+double modelComputeCSlmPrecompOMP2Threads(SphericalModel *model, const data_iso *data, const Precomp *precomp, int nthreads) {
+
+    const int lmax = model->lmax;
+    const int ll = model->ll;
+
+    Matrix_d *C_lm = model->C_lm, *S_lm = model->S_lm;
+    Matrix_d *P_lm_th = precomp->Plm_th;
+
+    printf("[modelComputeCSlm] Computing coefficients in parallel\n");
+    omp_set_num_threads(nthreads);
+
+    Clock *clock = Clock_new();
+    Clock_tic(clock);
+
+    #pragma omp parallel
+    {
+        if (omp_get_thread_num() == 0) printf("[modelComputeCSlmPrecompOMP2] computing CSlm values using %d threads\n", omp_get_num_threads());
+
+        #pragma omp for
+        for (int i = 0; i < ll; i++) {
+            lm_pair lm = i_to_lm(i);
+            computeCSPair(lm.l, lm.m, data, precomp, C_lm, S_lm, P_lm_th);
+        }
+    }
+
+    Clock_toc(clock);
+    double time = elapsed_time(clock);
+    free(clock);
+
+    return time;
+
+}
+
 // Compute the value of Clm and Slm that are assigned to this process.
 double modelComputeCSlmPrecompMPI(SphericalModel *model, const data_iso *data, const Precomp *precomp, int world_size, int this_rank) {
 

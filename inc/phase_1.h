@@ -77,6 +77,9 @@ double modelComputeCSlmPrecompOMP(SphericalModel *model, const data_iso *data, c
 
 double modelComputeCSlmPrecompOMP2(SphericalModel *model, const data_iso *data, const Precomp *precomp);
 
+// Choose the number of threads
+double modelComputeCSlmPrecompOMP2Threads(SphericalModel *model, const data_iso *data, const Precomp *precomp, int nthreads);
+
 // Write the coefficients of a spherical model to CSV
 // Use the prefix to indicate what data set the spherical model was trained on
 // pass "" as type if you don't want to specify
