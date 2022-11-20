@@ -22,6 +22,8 @@
 // MSE associated 
 Matrix_f *compute_prediction(const SphericalModel *model, const Precomp *precomp, const data_iso* data);
 
+Matrix_f *compute_prediction_omp(const SphericalModel *model, const Precomp *precomp, const data_iso* data);
+
 float compute_prediction_point(const SphericalModel *model, const Precomp *precomp, const data_iso *data, int i);
 
 // Save a prediction to a binary file for fast computation of MSE

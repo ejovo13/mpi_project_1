@@ -18,6 +18,26 @@ Matrix_f *compute_prediction(const SphericalModel *model, const Precomp *precomp
     return f_hat;
 }
 
+Matrix_f *compute_prediction_omp(const SphericalModel *model, const Precomp *precomp, const data_iso* data) {
+
+        // A prediction is simply the evaluation of a Laplace Series evaluated at all the data points
+    const int N = data->N;
+
+    Matrix_f *f_hat = Matrix_new_f(1, N);
+
+    #pragma omp parallel shared(f_hat) 
+    {
+        #pragma omp for
+        for (int i = 0; i < N; i++) {
+            *vecacc_f(f_hat, i) = compute_prediction_point(model, precomp, data, i);
+        }
+
+    }
+
+    return f_hat;
+
+}
+
 float compute_prediction_point(const SphericalModel *model, const Precomp *precomp, const data_iso *data, int i) {
 
     const Matrix_d *P_lm_th = precomp->Plm_th;
