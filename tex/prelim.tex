@@ -175,18 +175,32 @@ $O(Nl^2_{max})$. More interestingly, each $C_l^m$ or $S_l^m$ can be computed \te
 every $C_l^m$ and $C_l^m$ in a single operation, this method allows us the ability to compute any arbitrary $C_l^m$ directly. Why do we care? If I alraedy have the first 500 $C_l^m$ coefficients computed
 and stored in a text file, I can \textit{directly} compute the 501st in $O(N)$ time. Furthermore, this method gives rise to obvious and easy-to-implement parallelization schemes.
 
-
+\newpage
 \subsection{Comparison with Linear Squares}
 
+\subsubsection{Timing}
 Let's start by exploring the small data set and gathering data for how long it takes to compute a model.
+
 
 \begin{figure}[h!]
     \centering
     \includegraphics[width=0.6\textwidth]{media/average_runtime.png}
+    \caption{A timing comparison between least squares $\in O(Nl^4)$ and numerical quadrature $\in O(Nl^2)$ to compute the coefficients $C_l^m$ and $S_l^m$ for the small ETOPO1 data set.}
+    \label{fig:runtime}
 \end{figure}
 
 
-Tested on the \verb|ETOPO1_small.csv| data set with $l_{max} = 20$, the model computed via numerical integration had an average error of about 2 times that of the least squares approach, but ran over 100 times faster.
+Tested on the \verb|ETOPO1_small.csv| data set with $l_{max} = 20$, the model computed via numerical integration had an average runtime of 0.656s across 
+5 trials, compared to the old model which ran in 31.678 seconds. And that's just for a small $l$. Running the algorithm in sequential for higher values of $l$ would quickly become
+intractable for the least squares algorithm due to its steep algorithmic complexity. So, for an $l = 20$, numerical quadrature ran on average ~50x faster than its least squares counterpart. As the degree
+of the model increases, so does the disparity between the two runtimes; at $l=20$ our algorithm runs 50 times faster but at $l = 100$ our algorithm could be running 1250 times faster.
+
+Clearly the proposed numerical integration model is faster. But how do the estimated coefficients perform relative to the coefficients that minimize the MSE?
+
+% \begin{figure}[h!]
+%     \centering
+%     \includegraphics[width=0.6\textwidth]{media/}
+% \end{figure}
 
 \textbf{TODO}
 \begin{itemize}
