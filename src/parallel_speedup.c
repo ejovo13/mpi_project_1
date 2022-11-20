@@ -28,14 +28,15 @@ int main() {
     Matrix_d *t_50 = time_model(50);
     Matrix_d *t_25 = time_model(25);
     Matrix_d *t_100 = time_model(100);
+    Matrix_d *t_150 = time_model(150);
 
     // Let's write this data to a csv file
     FILE *csv_out = fopen("parallel_timing.csv", "w");
 
-    fprintf(csv_out, "n_threads,t25,t50,t100\n");
+    fprintf(csv_out, "n_threads,t25,t50,t100,t150\n");
     // Let's iterate through the number of threads
     for (int i = 0; i < MAX_THREADS; i++) {
-        fprintf(csv_out, "%d,%lf,%lf,%lf\n", vecat_d(t_25, i), vecat_d(t_50, i), vecat_d(t_100, i));
+        fprintf(csv_out, "%d,%lf,%lf,%lf,%lf\n", threads[i], vecat_d(t_25, i), vecat_d(t_50, i), vecat_d(t_100, i), vecat_d(t_150, i));
     }
 
     // fprintf(csv_out, "n_threads,t25,t50\n");

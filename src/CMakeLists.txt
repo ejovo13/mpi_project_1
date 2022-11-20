@@ -20,6 +20,16 @@ add_geodesy(new_model_omp)
 add_geodesy(new_model_omp2)
 add_geodesy(parallel_speedup)
 
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/build_small_models.sh
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+    
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/build_med_models.sh
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/build_hi_models.sh
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
+
 # add_executable(mejovo model_ejovo.c)
 # add_executable(old_model old_model.c)
 # add_executable(validate validate.c)

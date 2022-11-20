@@ -6,6 +6,7 @@
 #include <err.h>
 
 #include "geodesy.h"
+#include "ejovo.h"
 
 /**========================================================================
  * ?                          new_model.c
@@ -155,7 +156,7 @@ int main(int argc, char **argv) {
                 *========================================================================**/
             printf("[main] Computing altitude predictions...\n");
             Clock_tic(clock);
-            f_hat = compute_prediction(model, precomp, data);
+            f_hat = compute_prediction_omp(model, precomp, data);
             Clock_toc(clock);
             printf("[main] Time to compute prediction: %lfs\n", elapsed_time(clock));
             save_prediction(f_hat, binary_prediction_out);
@@ -185,13 +186,26 @@ int main(int argc, char **argv) {
                 printf("[main] Computing differences\n");
                 FILE *diff_csv = fopen(diff_out, "w");
                 fprintf(diff_csv, "diff\n");
-                Vector_print_head_f(f_hat, 10);
+                printf("Loaded as f_hat: \n");
+
+                Matrix_d *true_value = Matrix_new_d(1, data->N);
 
                 for (int i = 0; i < data->N; i++) {
-                    diff = f_hat->data[i] - (float) data->r[i];
-                    printf("f_hat->data[i]: %f, data->r[i]: %u, diff: %f\n", f_hat->data[i], data->r[i], diff);
-                    fprintf(diff_csv, "%f\n", diff);
+                    vecset_d(true_value, i, data->r[i]);
                 }
+
+                Matrix_d *diff_vec = Matrix_new_d(1, data->N);
+
+                for (int i = 0; i < data->N; i++) {
+                    float delta = f_hat->data[i] - (float) data->r[i];
+                    vecset_d(diff_vec, i, delta);
+                    // printf("f_hat->data[%d]: %f, data->r[i]: %u, diff: %lf\n", i, f_hat->data[i], data->r[i], diff);
+                    fprintf(diff_csv, "%lf\n", delta);
+                }
+
+                Vector_print_head_f(f_hat, 10);
+                Vector_print_head_d(true_value, 10);
+                Vector_print_head_d(diff_vec, 10);
 
                 fclose(diff_csv);
 
