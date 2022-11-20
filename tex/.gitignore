@@ -6,4 +6,6 @@
 *.gz
 !*.pdf
 !*.png
+*.bbl
+*.blg
 

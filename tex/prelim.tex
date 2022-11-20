@@ -28,8 +28,8 @@
 \makeatletter
 
 
-\title{\Large Parallel Programming Project 1}
-\author{VOYLES Evan}
+\title{\Large Estimation of Laplace Series Coefficients via 2-D Numerical Quadrature}
+\author{Evan Voyles}
 \date{}
 
 \newtheorem{theorem}{Th\'eor\`eme}
@@ -57,6 +57,18 @@
     \normalfont
 }
 
+
+\section{Abstract}
+
+This paper provides an alternative approach to the computation
+of Laplace Series coefficients $C_l^m$ and $S_l^m$ with algorithmic complexity $O(Nl^2)$ in time and $O(Nl^2)$ in space. We 
+make use of the fact that the spherical harmonics form a complete and orthogonal set to directly
+compute $C_l^m$ as a 2-dimensional integral. We estimate this integral using numerical quadrature techniques
+and the resulting model is blazing fast compared to a least squares model running in $O(Nl^4$). Harnessing the structure of the 
+data sets, we perform many 
+
+
+
 \section{Preliminaries}
 
 Any sufficiently regular function defined on a sphere can be written
@@ -74,21 +86,80 @@ solution. Unfortunately, this problem runs in $O(Nl_{max}^4)$ time and requires 
 are no \textit{self-evident} parallelization techniques to speed up computation time. In this report we propose an alternative approach to computing the Laplace series coefficients
 $C_l^m$ and $S_l^m$ that runs in \textcolor{red}{$O(Nl_{max}^2)$} time complexity with trivial parallelization models.
 
-\section{Alternative Approach}
+\newpage
 
-The coefficients $C_l^m$ and $S_l^m$ are defined as the orthogonal projection of $f_(\theta, \phi)$ onto the basis functions (spherical harmonics $Y_l^m$). Written in terms of the real
-spherical harmonics:
+\section{Data Sets}
+
+NASA data sets contain the altitude information for a spherical coordinate pair. The spherical coordinates can
+be represented as the discretization of a 2-d rectangle with width $2\pi$ and height $\pi$. NASA's data sets contain observations
+over a discretization of $[-\frac{\pi}{2}, \frac{\pi}{2}] \times [-\pi, \pi]$, represented as a $n_\theta \times n_\phi$ grid with equidistant points.
+
+\begin{figure}[h!]
+    \centering
+    \begin{minipage}{.5\textwidth}
+      \centering
+      \includegraphics[width=.95\linewidth]{media/discretized_grid.png}
+    %   \captionof{figure}{A figure}
+      \label{fig:test1}
+    \end{minipage}%
+    \begin{minipage}{.5\textwidth}
+      \centering
+      \includegraphics[width=.95\linewidth]{media/discretized_reduced.png}
+    %   \captionof{figure}{Another figure}
+      \label{fig:test2}
+    \end{minipage}
+    \caption{Discretization points (left) of a reduced data set with $n_\theta = 20$, $n_\phi = 40$. On the vertical axis we have $\theta \in [-\pi/2, \pi/2]$, or the latitude; On 
+    the horizontal axis we have $\phi \in [-\pi, \pi]$, the longitude.}
+\end{figure}
+
+Due to the linear spacing, we only need to know the number of points $n_\theta$ and $n_\phi$ to recreate the spherical coordinate pairs provided 
+by the data sets, allowing us to decrease the running memory footprint of our program. In order study informative analytics about our model, we first enumerate
+the characteristics of each data set.
+
+% \begin{figure}[h!]
+    % \centering a
+    \begin{center}
+    \begin{tabular}{ c |  c  c  c }
+        & $n_\theta$ & $n_\phi$ & $N$ \\ 
+    \hline
+    small & 180 & 360 & 64800\\
+    med & 540 & 1080 & 583200\\
+    hi \\
+    ultra
+    \end{tabular}
+    \end{center}
+% \end{figure}
+$$\theta \in [0, \pi],\ \ \phi \in [0, \pi2]$$
+
+We'll use these values later when we study the time it takes to compute our model.
+
+\subsection{Visualization}
+
+\textbf{TODO:} [ ] add 3-d maps
+
+\section{Mathematical Model}
+
+
+
+
+\subsection{Coefficients}
+
+The coefficients $C_l^m$ and $S_l^m$ are defined as the orthogonal projection of $f(\theta, \phi)$ onto the basis functions $Y_l^m$, the spherical harmonics of degree $l$ and order $m$. This definition is perfectly analagous to the 
+computation of fourier coefficients for $2\pi$ periodic functions. Written in terms of the associated legendre polynomials, these integrals are defined as
 
 \begin{align*}
+    \label{eq:coeff}
     C_l^m &= \int_0^{2\pi}\int_0^\pi f(\theta, \phi) P_l^m (\cos \theta)\cos (m \phi) \sin \theta d\theta d\phi\\
-    S_l^m &= \int_0^{2\pi}\int_0^\pi f(\theta, \phi) P_l^m (\cos \theta)\sin (m \phi) \sin \theta d\theta d\phi
+    S_l^m &= \int_0^{2\pi}\int_0^\pi f(\theta, \phi) P_l^m (\cos \theta)\sin (m \phi) \sin \theta d\theta d\phi 
 \end{align*}
 
-\subsection{Numeric Integraion}
+Taking advantage of the structure of the data sets, we approximate these coefficients via numerical quadrature.
 
-We first remark that the NASA data sets are provided as discretizations of $[-\frac{\pi}{2}, \frac{\pi}{2}] \times [-\pi, \pi]$, represented as a $n_\theta \times n_\phi$ equidistant grid.
-For example, for \verb|ETOPO1_small.csv|, $n_\theta = 180$, $n_\phi = 360$, and $N \coloneqq n_\theta n_\phi = 64000$;
-We can easily approximate these 2 dimensional integrals (using the midpoint rule?) via numeric quadrature rules
+\subsubsection{Computation via Numerical Integration}
+
+
+    
+We approximate the Laplace Series coefficients via a 2 dimensional analogue of the rectangle rule.  
 \begin{align*}
     C_l^m &\approx \sum_{i = 1}^{n_\phi}\sum_{j = 1}^{n_\theta} f(\theta_j, \phi_i) P_l^m (\cos \theta_j)\cos (m \phi_i) \sin \theta_j \Delta\theta \Delta\phi\\
           &\approx \Delta\theta \Delta\phi\sum_{i = 1}^{n_\phi}\cos (m \phi_i)\sum_{j = 1}^{n_\theta} f(\theta_j, \phi_i) P_l^m (\cos \theta_j) \sin \theta_j\\
@@ -104,7 +175,16 @@ $O(Nl^2_{max})$. More interestingly, each $C_l^m$ or $S_l^m$ can be computed \te
 every $C_l^m$ and $C_l^m$ in a single operation, this method allows us the ability to compute any arbitrary $C_l^m$ directly. Why do we care? If I alraedy have the first 500 $C_l^m$ coefficients computed
 and stored in a text file, I can \textit{directly} compute the 501st in $O(N)$ time. Furthermore, this method gives rise to obvious and easy-to-implement parallelization schemes.
 
+
 \subsection{Comparison with Linear Squares}
+
+Let's start by exploring the small data set and gathering data for how long it takes to compute a model.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.6\textwidth]{media/average_runtime.png}
+\end{figure}
+
 
 Tested on the \verb|ETOPO1_small.csv| data set with $l_{max} = 20$, the model computed via numerical integration had an average error of about 2 times that of the least squares approach, but ran over 100 times faster.
 
@@ -116,10 +196,21 @@ Tested on the \verb|ETOPO1_small.csv| data set with $l_{max} = 20$, the model co
 
 \begin{figure}
     \centering
-    \includegraphics{/media/
+    \includegraphics[width=0.5\linewidth]{media/boxplot_hi.png}
 \end{figure}
 
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\linewidth]{media/density_small.png}
+\end{figure}
 
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\linewidth]{media/faceted_histogram_med.png}
+
+\end{figure}
+
+section
 
 \section{Improvements to the model}
 
@@ -180,8 +271,11 @@ angle of $\phi_{iso} = \frac{\pi}{2}$. Conveniently, the longitude $\lambda_{nas
     \begin{equation*}
         f(\theta_{iso}, \phi_{iso}) \equiv f(\phi_{nasa}, \lambda_{nasa})
     \end{equation*}
+
     
 \end{proposition}
+
+
 
 \begin{proof}
     $f(\phi_{nasa}, \lambda_{nasa})$ is defined in the Project proposal as 
@@ -194,7 +288,10 @@ angle of $\phi_{iso} = \frac{\pi}{2}$. Conveniently, the longitude $\lambda_{nas
 
 \end{proof}
 
+\nocite{*}
 
+\bibliography{ppar}
+\bibliographystyle{ieeetr}
 
 \end{document}
 

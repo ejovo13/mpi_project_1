@@ -26,6 +26,7 @@ int lmax = -1;
 int lmodel = -1;
 char * size_dataset = NULL;
 data_iso *data = NULL;
+int nthreads = 1;
 
 bool txt = false;
 bool predict = false;
@@ -38,6 +39,7 @@ void usage(char ** argv)
     printf("--[small | med | hi | ultra]    dataset to model\n");
     printf("--lmodel l                      degree of the model to compute\n");
     printf("--lmax L                        degree of the stored binary file\n");
+    printf("[--threads nthreads]                   number of omp threads\n");
     printf("[--txt]                         output the model as a text file\n");
     printf("[--predict]                     predict the altitude values (f_hat)\n");
     printf("[--diff]                        predict the altitude values (f_hat) and compute\n");
@@ -57,10 +59,15 @@ void process_command_line_options(int argc, char ** argv)
         {"ultra", no_argument, NULL, 'u'},
         {"txt", no_argument, NULL, 't'},
         {"predict", no_argument, NULL, 'p'},
+        {"threads", required_argument, NULL, 'n'},
         {"diff", no_argument, NULL, 'd'},
+
         {NULL, 0, NULL, 0}
     };
+
     char ch;
+    nthreads = omp_get_max_threads();
+
     while ((ch = getopt_long(argc, argv, "", longopts, NULL)) != -1) {
         switch (ch) {
 
@@ -96,6 +103,9 @@ void process_command_line_options(int argc, char ** argv)
             diff = true;
             predict = true;
             break;
+        case 'n':
+            nthreads = atoi(optarg);
+            break;
         default:
             errx(1, "Unknown option\n");
         }
@@ -122,7 +132,7 @@ int main(int argc, char **argv) {
 
         printf("[main] %s not found, computing Clm and Slm coefficients\n", coeff_file_bin);
         model = newSphericalModel(lmodel, data, precomp);    
-        double time = modelComputeCSlmPrecompOMP2(model, data, precomp);
+        double time = modelComputeCSlmPrecompOMP2Threads(model, data, precomp, nthreads);
         printf("[main] Computed coefficients for L = %d in %lfs\n", lmodel, time);
         SphericalModelToBIN(model, size_dataset);
 
