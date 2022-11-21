@@ -232,7 +232,7 @@ void writeModifiedModel(const spherical_model *model, const data_iso *data, cons
     FILE *out = fopen(fileout, "w");
 
     for (size_t l = 0; l <= model->lmax; l++) {
-        fprintf(out, "%lu\t%lu\t%.15lf\t%.15lf\n", l, 0, model->C_lm->data[PT(l, 0)], model->S_lm->data[PT(l, 0)]);
+        fprintf(out, "%lu\t%u\t%.15lf\t%.15lf\n", l, 0, model->C_lm->data[PT(l, 0)], model->S_lm->data[PT(l, 0)]);
         for (size_t m = 1; m <= l; m++) {
             fprintf(out, "%lu\t%lu\t%.15lf\t%.15lf\n", l, m, 4.0 * model->C_lm->data[PT(l, m)], 4.0 * model->S_lm->data[PT(l, m)]);
         }
