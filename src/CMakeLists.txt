@@ -29,6 +29,12 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/build_med_models.sh
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/build_hi_models.sh
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/build_old_small.sh
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/validate_old_small.sh
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
 
 # add_executable(mejovo model_ejovo.c)
 # add_executable(old_model old_model.c)
