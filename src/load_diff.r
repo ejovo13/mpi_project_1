@@ -2,7 +2,9 @@
 library(purrr)
 library(tidyverse)
 
-med_degrees <- c(0, 1, 2, 3, 4, 5, 10, 20, 30)
+as_str <- function(x) {
+    paste("", x, sep = "")
+}
 
 # dataset_size: "small" | "med" | "hi"
 # degrees: a vector of degree sizes
@@ -25,10 +27,83 @@ load_diff <- function(dataset_size, degrees) {
 
     # Read all of the csvs
     df_all <- map(csvs, function(x) { as_tibble(read_csv(x)) })
+    df_all.first <- df_all[[1]]
 
+    for (i in 1:(length(degrees) - 1)) {
+        df_all.first <- df_all.first |> add_column(df_all[[i + 1]]$diff, .name_repair = "unique")
+    }
 
-    df_all
+    new_colnames <- map_chr(degrees, function(d) { paste("L", d, sep = "")})
+    colnames(df_all.first) <- new_colnames
+    
+    all_means <- df_all.first |> mutate(across(everything(), function(x) { mean(abs(x)) }))
+    df_mean <- tibble(degree = degrees, mu = unlist(all_means[1,]))
+    # Compute the means
 
+    L_names <- map_chr(degrees, function(x) { paste("L", x, sep = "")})
+
+    df_all.first.long <- df_all.first |> 
+        mutate(n = 1:nrow(df_all.first)) |> 
+        pivot_longer(c(1:length(degrees)), names_to = "model", values_to = "error") |> 
+        mutate(model = factor(model, levels = L_names))
+
+    list(mean = df_mean, err = df_all.first, long = df_all.first.long)
 }
 
+# ========================== Main program =============================#
+med_degrees <- c(0, 1, 2, 3, 4, 5, 10, 20, 30, 40, 50, 100, 150, 200, 300, 400, 500, 600, 700, 800)
+small_degrees <- c(0, 2, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 50, 100, 150, 175, 200, 215, 250, 300)
+
+
 df.med <- load_diff("med", med_degrees)
+df.small <- load_diff("small", small_degrees)
+
+df.med$mean |> 
+    ggplot(aes(degree, mu)) + 
+    geom_line()  
+    # geom_point(aes(x = df.small$mean$degree, y = df.small$mean$mu))
+
+# I want to somehow coerce the small data set to the large one
+
+small_pad <- vector("numeric", length(med_degrees))
+
+for (i in 1:length(med_degrees)) {
+    # if med_degrees[i] is in the small degrees, fill the appropriate value of df.small$mean
+    mean_vec <- df.small$mean$mu
+    ind <- small_degrees == med_degrees[i]
+    if (sum(ind) == 0) {
+        small_pad[i] <- NaN
+    } else {
+        small_pad[i] <- mean_vec[ind]
+    }
+}
+
+p <- df.small$mean |> 
+    ggplot(aes(degree, mu)) + 
+    geom_line(size = 1) + 
+    geom_point(aes(col = factor(degree)), size = 5) +
+    theme(text = element_text(size = 20), legend.position = "none") +
+    labs(y = "Average Absolute Erorr (AAE)", x = "Model degree")
+
+ggsave("small_err.png", p)
+
+df.med$mean |> 
+    ggplot(aes(degree, mu)) + 
+    geom_line() +
+    geom_line(aes(y = small_pad), col = "red")
+
+p <- df.med$long |> 
+    ggplot(aes(error, col = model, fill = model)) +
+    coord_flip() + 
+    geom_boxplot(alpha = 0.7) +
+    theme(text = element_text(size = 30))
+
+ggsave("med_error_box.png", p)
+
+p <- df.small$long |> 
+    ggplot(aes(error, col = model, fill = model)) +
+    coord_flip() + 
+    geom_boxplot(alpha = 0.7)
+
+ggsave("small_error_box.png", p)
+# Compute the average absolute error 
