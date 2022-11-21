@@ -8,7 +8,7 @@ validate
 .vscode
 *.txt
 !**CMakeLists.txt
-# *.csv
+*.csv
 *.png
 build
 release
