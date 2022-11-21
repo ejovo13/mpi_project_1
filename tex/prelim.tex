@@ -21,10 +21,10 @@
 \geometry{rmargin=1.5in}
 
 \makeatletter
-\renewcommand\section{\@startsection{section}{1}{\z@}%
-                                  {-3.5ex \@plus -1ex \@minus -.2ex}%
-                                  {2.3ex \@plus.2ex}%
-                                  {\normalfont\normalsize\bfseries}}
+% \renewcommand\section{\@startsection{section}{1}{\z@}%
+%                                   {-3.5ex \@plus -1ex \@minus -.2ex}%
+%                                   {2.3ex \@plus.2ex}%
+%                                   {\normalfont\normalsize\bfseries}}
 \makeatletter
 
 
@@ -65,7 +65,9 @@ of Laplace Series coefficients $C_l^m$ and $S_l^m$ with algorithmic complexity $
 make use of the fact that the spherical harmonics form a complete and orthogonal set to directly
 compute $C_l^m$ as a 2-dimensional integral. We estimate this integral using numerical quadrature techniques
 and the resulting model is blazing fast compared to a least squares model running in $O(Nl^4$). Harnessing the structure of the 
-data sets, we perform many 
+data sets, we perform many optimization to reduce the amount of data needed to be stored in memory and save time by precomputing values of the 
+associated Legendre polynomials. We explore the scalability of this algorithm when implemented in parallel and we present a high-degree model of the
+ultra data set.
 
 
 
@@ -84,7 +86,21 @@ ensure the integrity of future computations. For a discussion on transforming th
 The project proposal suggests computing the coefficients $C_l^m, S_l^m$ by setting up an overdetermined linear system of equations and finding the least squares
 solution. Unfortunately, this problem runs in $O(Nl_{max}^4)$ time and requires about $8N(l_{max} + 1)^2$ bytes of memory. That is absurdly prohibitive. Furthermore, there 
 are no \textit{self-evident} parallelization techniques to speed up computation time. In this report we propose an alternative approach to computing the Laplace series coefficients
-$C_l^m$ and $S_l^m$ that runs in \textcolor{red}{$O(Nl_{max}^2)$} time complexity with trivial parallelization models.
+$C_l^m$ and $S_l^m$ that runs in \textbf{$O(Nl^2)$} time complexity with trivial parallelization models.
+
+\subsection{Laplace Series Coefficients}
+
+The coefficients $C_l^m$ and $S_l^m$ are defined as the orthogonal projection of $f(\theta, \phi)$ onto the basis functions $Y_l^m$, 
+the spherical harmonics of degree $l$ and order $m$. This definition is perfectly analagous to the fourier coefficients for $2\pi$ 
+periodic functions. Written in terms of the normalized legendre polynomials, these projections are defined as:
+
+\begin{align*}
+    \label{eq:coeff}
+    C_l^m &= \int_0^{2\pi}\int_0^\pi f(\theta, \phi) \bar P_l^m (\cos \theta)\cos (m \phi) \sin \theta d\theta d\phi\\
+    S_l^m &= \int_0^{2\pi}\int_0^\pi f(\theta, \phi) \bar P_l^m (\cos \theta)\sin (m \phi) \sin \theta d\theta d\phi 
+\end{align*}
+
+We propose a solution to directly compute an approximation of the $C_l^m$ and $S_l^m$ using numerical integration.
 
 \newpage
 
@@ -98,13 +114,13 @@ over a discretization of $[-\frac{\pi}{2}, \frac{\pi}{2}] \times [-\pi, \pi]$, r
     \centering
     \begin{minipage}{.5\textwidth}
       \centering
-      \includegraphics[width=.95\linewidth]{media/discretized_grid.png}
+      \includegraphics[width=.95\textwidth]{media/discretized_grid.png}
     %   \captionof{figure}{A figure}
       \label{fig:test1}
     \end{minipage}%
     \begin{minipage}{.5\textwidth}
       \centering
-      \includegraphics[width=.95\linewidth]{media/discretized_reduced.png}
+      \includegraphics[width=.95\textwidth]{media/discretized_reduced.png}
     %   \captionof{figure}{Another figure}
       \label{fig:test2}
     \end{minipage}
@@ -139,23 +155,23 @@ We'll use these values later when we study the time it takes to compute our mode
 
 \section{Mathematical Model}
 
+We define $\mathcal{S}_L$ a spherical model of degree $L$ to be the set of coefficients $\{C_0^0, C_1^0, C_1^1, \dots, C_L^L\}$ and \\ 
+$\{S_0^0, S_1^0, SL^L, \dots, S_L^L\}$ that are used in conjonction with (\ref{eq:f_iso}) to provide an estimate of $f$, $\hat f$, defined as:
+\begin{equation}
+    \hat f(\theta, \phi; L) = \sum_{l = 0}^{L}\sum_{m = 0}^l \bar P_l^m(\cos\theta)[C_l^m\cos m\phi + S_l^m \sin m \phi].
+\end{equation}
+
+Notice that the $+\infty$ in the outer summation has been replaced with the degree of the model, $L$. We will evaluate the efficacy of the model by studying the distance between $f$ and $\hat f$
+at the observations of our data set. Of notable interest will be the average absolute error (AAE) and the mean squared error (MSE):
+\begin{equation}
+    \label{eq:AAE}
+    \mathrm{AAE}(l_{max}) = \frac{1}{N}\sum_{i = 1}^{N} |\hat f_i - f_i |, \quad MSE(l_{max}) = \frac{1}{N} \sum_{i = 1}^N (\hat f_i - f_i)^2
+\end{equation}
+
+where $\hat f_i$ denotes the estimated altitude evaluated at the $i$th data point and $f_i$ is the true observed altitude of the $i$th data point.
 
 
-
-\subsection{Coefficients}
-
-The coefficients $C_l^m$ and $S_l^m$ are defined as the orthogonal projection of $f(\theta, \phi)$ onto the basis functions $Y_l^m$, the spherical harmonics of degree $l$ and order $m$. This definition is perfectly analagous to the 
-computation of fourier coefficients for $2\pi$ periodic functions. Written in terms of the associated legendre polynomials, these integrals are defined as
-
-\begin{align*}
-    \label{eq:coeff}
-    C_l^m &= \int_0^{2\pi}\int_0^\pi f(\theta, \phi) P_l^m (\cos \theta)\cos (m \phi) \sin \theta d\theta d\phi\\
-    S_l^m &= \int_0^{2\pi}\int_0^\pi f(\theta, \phi) P_l^m (\cos \theta)\sin (m \phi) \sin \theta d\theta d\phi 
-\end{align*}
-
-Taking advantage of the structure of the data sets, we approximate these coefficients via numerical quadrature.
-
-\subsubsection{Computation via Numerical Integration}
+\subsection{Computation of Coefficients via Numerical Integration}
 
 
     
@@ -163,50 +179,142 @@ We approximate the Laplace Series coefficients via a 2 dimensional analogue of t
 \begin{align*}
     C_l^m &\approx \sum_{i = 1}^{n_\phi}\sum_{j = 1}^{n_\theta} f(\theta_j, \phi_i) P_l^m (\cos \theta_j)\cos (m \phi_i) \sin \theta_j \Delta\theta \Delta\phi\\
           &\approx \Delta\theta \Delta\phi\sum_{i = 1}^{n_\phi}\cos (m \phi_i)\sum_{j = 1}^{n_\theta} f(\theta_j, \phi_i) P_l^m (\cos \theta_j) \sin \theta_j\\
-\end{align*}
-
-\begin{align*}
     S_l^m &\approx \sum_{i = 1}^{n_\phi}\sum_{j = 1}^{n_\theta} f(\theta_j, \phi_i) P_l^m (\cos \theta_j)\sin (m \phi_i) \sin \theta_j \Delta\theta \Delta\phi\\
-          &\approx \Delta\theta \Delta\phi\sum_{i = 1}^{n_\phi}\sin (m \phi_i)\sum_{j = 1}^{n_\theta} f(\theta_j, \phi_i) P_l^m (\cos \theta_j) \sin \theta_j\\
+          &\approx \Delta\theta \Delta\phi\sum_{i = 1}^{n_\phi}\sin (m \phi_i)\sum_{j = 1}^{n_\theta} f(\theta_j, \phi_i) P_l^m (\cos \theta_j) \sin \theta_j
 \end{align*}
 
-This method computes \textit{individual} Laplace series coefficients in $O(N)$ time! Thus, computing the coefficients for a Discrete Laplace Series (DLS) of order $l_max$ runs in
-$O(Nl^2_{max})$. More interestingly, each $C_l^m$ or $S_l^m$ can be computed \textbf{independently} of any other coefficient. Whereas solving the linear least squares problem requires computing
-every $C_l^m$ and $C_l^m$ in a single operation, this method allows us the ability to compute any arbitrary $C_l^m$ directly. Why do we care? If I alraedy have the first 500 $C_l^m$ coefficients computed
-and stored in a text file, I can \textit{directly} compute the 501st in $O(N)$ time. Furthermore, this method gives rise to obvious and easy-to-implement parallelization schemes.
+This method computes \textit{individual} Laplace series coefficients in $O(N)$ time! Thus, computing the coefficients for a Discrete Laplace Series (DLS) of order $l$ runs in
+$O(Nl^2)$. More interestingly, each $C_l^m$ or $S_l^m$ can be computed \textbf{independently} of any other coefficient. Whereas solving the linear least squares problem requires computing
+every $C_l^m$ and $C_l^m$ up to a given $L$ in a single operation, this method allows us the ability to compute any arbitrary $C_l^m$ directly. Why do we care? If I alraedy have the first 500 $C_l^m$ coefficients computed
+and stored in a text file, I can \textit{directly} compute the next p coefficients in $O(pN)$ time. This method allows us to also compute ranges of $C_l^m$ and $S_l^m$ without messing around
+with bulky matrices taking up millions of bytes. As a consequence, there are simple yet powerful parallelization schemes that can be easily implemented to speed up computation and increase 
+the performance of our models.
 
-\newpage
+% \newpage
 \subsection{Comparison with Linear Squares}
 
-\subsubsection{Timing}
-Let's start by exploring the small data set and gathering data for how long it takes to compute a model.
+Let's start by exploring the small data set and benchmarking how long it takes to compute a model of degree $l$ for $l \in \{0, 2, 4, \dots, 20\}$ via 
+a) an overdetermined system of linear equations b) numerical integration. Our aim in this section is to show that computing the coefficients via numerical integration
+provides numerous benefits to the overall methodology and allows us to compute higher degree models with lower error more efficiently.
 
+\subsubsection{Timing}
+
+
+We experimentally corroborate the theoretical hypothesis that the least squares computation is of time complexity $O(Nl^4)$ for a data set of size $N$ and 
+model degree $l$.
 
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=0.6\textwidth]{media/average_runtime.png}
-    \caption{A timing comparison between least squares $\in O(Nl^4)$ and numerical quadrature $\in O(Nl^2)$ to compute the coefficients $C_l^m$ and $S_l^m$ for the small ETOPO1 data set.}
+    \includegraphics[width=0.5\textwidth]{media/average_runtime.png}
+    \caption{A timing comparison between least squares $\in O(Nl^4)$ and numerical quadrature $\in O(Nl^2)$ to compute the coefficients $C_l^m$ and $S_l^m$ for the small ETOPO1 data set. 
+    For each degree of the model Laplace coefficients were computed 5 times. Programs were run in sequential with 1 processor. TODO: Run a linear regression}
     \label{fig:runtime}
 \end{figure}
 
 
-Tested on the \verb|ETOPO1_small.csv| data set with $l_{max} = 20$, the model computed via numerical integration had an average runtime of 0.656s across 
-5 trials, compared to the old model which ran in 31.678 seconds. And that's just for a small $l$. Running the algorithm in sequential for higher values of $l$ would quickly become
-intractable for the least squares algorithm due to its steep algorithmic complexity. So, for an $l = 20$, numerical quadrature ran on average ~50x faster than its least squares counterpart. As the degree
+When we study how long it takes to compute a model of degree 20 (Figure \ref{fig:runtime}) for the small data set we find that the least squares method takes, on average, a staggering 31.678 seconds to run. 
+Coefficients computed by numerical integration, on the other hand, were generated with an average runtime of 0.656s across
+5 trials. As we will see in the following analysis, a model of degree 20 is wholly incomplete to accurately represent a data set with 648000 points, and we are not 
+satisfied with the runtime of the least squares method. And that's just for a small $l$. Running the algorithm in sequential for higher values of $l$ would quickly become
+intractable due to its steep algorithmic complexity, especially magnified if we wanted to compute models for larger data set with millions of points (The medium data set has half a million) For a model of degree 20, numerical quadrature ran on average ~50x faster than its least squares counterpart. As the degree
 of the model increases, so does the disparity between the two runtimes; at $l=20$ our algorithm runs 50 times faster but at $l = 100$ our algorithm could be running 1250 times faster.
 
-Clearly the proposed numerical integration model is faster. But how do the estimated coefficients perform relative to the coefficients that minimize the MSE?
+Clearly the proposed numerical integration model is faster. But how do two models compare when it comes to average squared error? 
 
-% \begin{figure}[h!]
-%     \centering
-%     \includegraphics[width=0.6\textwidth]{media/}
-% \end{figure}
 
-\textbf{TODO}
-\begin{itemize}
-    \item Provide more detailed numeric comparison
-    \item Provide timing analysis
-\end{itemize}
+\newpage
+\subsubsection{Model Performance}
+
+In the least squares model, coefficients are carefully selected by minimizing the MSE of the prediction, which amounts to solving a linear system in $O(Nl^4)$ time. We are therefore,
+by construction, finding optimal coefficients that should miniimze the MSE. We compare how the average abs error, the AAE, varies with
+respect to the degree of the model.
+
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.6\textwidth]{media/diff_error.png}
+    \caption{A Comparison between the average abs error between the least squares estimate and numerical quadrature estimate for the small ETOPO1 data set. Coefficients computed via least squares
+    perform slightly better than their quadrature counter parts.}
+    \label{fig:erorr}
+\end{figure}
+
+Perhaps surprisignly, we find that there is no significant penalty to using numerical quadrature to estimate a model's coefficients. In fact, computing the coefficients via quadrature allows us to 
+create higher degree models that, running in the same time as a low-order least squares model, will have far lower average absolute error values and furthermore the distributions of the error will be
+much tighter, exhibiting lower variance. In fact, as will be shown in the next section, we can run a degree 200 model using numerical integration in around 20 seconds whose average abs error
+is 148.76, compared to the degree 20 model whos AAE is 641.1.
+
+\subsubsection{Higher Degree Models}
+In this section we explore the distribution of error values ($\hat f - f$) for models up to degree $l = 300$, computed for the small, medium, and high resolution data sets.
+
+We start off by showing the evolution of the model's estimates as the degree $l$ increases
+
+\begin{figure}[h!]
+    \begin{minipage}{.245\textwidth}
+        \centering
+        \includegraphics[width=0.95\linewidth]{media/med_1.jpg}
+        \label{fig:med1}
+    \end{minipage}
+    \begin{minipage}{.245\textwidth}
+        \centering
+        \includegraphics[width=0.95\linewidth]{media/med_2.jpg}
+        \label{fig:med2}
+    \end{minipage}
+    \begin{minipage}{.245\textwidth}
+        \centering
+        \includegraphics[width=0.95\linewidth]{media/med_3.jpg}
+        \label{fig:med3}
+    \end{minipage}
+    \begin{minipage}{.245\textwidth}
+        \centering
+        \includegraphics[width=0.95\linewidth]{media/med_4.jpg}
+        \label{fig:med4}
+    \end{minipage}
+    \begin{minipage}{.245\textwidth}
+        \centering
+        \includegraphics[width=0.95\linewidth]{media/med_5.jpg}
+        \label{fig:med5}
+    \end{minipage}
+    \begin{minipage}{.245\textwidth}
+        \centering
+        \includegraphics[width=0.95\linewidth]{media/med_10.jpg}
+        \label{fig:med10}
+    \end{minipage}
+    \begin{minipage}{.245\textwidth}
+        \centering
+        \includegraphics[width=0.95\linewidth]{media/med_20.jpg}
+        \label{fig:med20}
+    \end{minipage}
+    \begin{minipage}{.245\textwidth}
+        \centering
+        \includegraphics[width=0.95\linewidth]{media/med_50.jpg}
+        \label{fig:med50}
+    \end{minipage}
+    \begin{minipage}{.245\textwidth}
+        \centering
+        \includegraphics[width=0.95\linewidth]{media/med_100.jpg}
+        \label{fig:med100}
+    \end{minipage}
+    \begin{minipage}{.245\textwidth}
+        \centering
+        \includegraphics[width=0.95\linewidth]{media/med_200.jpg}
+        \label{fig:med200}
+    \end{minipage}
+    \begin{minipage}{.245\textwidth}
+        \centering
+        \includegraphics[width=0.95\linewidth]{media/med_300.jpg}
+        \label{fig:med300}
+    \end{minipage}
+    \begin{minipage}{.245\textwidth}
+        \centering
+        \includegraphics[width=0.95\linewidth]{media/med.jpg}
+        \label{fig:med}
+    \end{minipage}
+    \caption{Altitude prediction of a model for varying degrees of a model. In the top row we have models of degree $l \in \{1, 2, 3, 4\}$, middle row $l \in \{5, 10, 20, 50\}$, and finally the bottom
+    row $l \in \{100, 200, 300, +\infty\}$. The final visualization on the bottom right corresponds to the observed values of $f$.}
+\end{figure}
+
+Evidently, as we increase the degree of the model the difference between the predicted values $\hat f_i$ and the observations $f_i$ will tend to 
+shrink in magnitude.
 
 \begin{figure}
     \centering
@@ -223,38 +331,6 @@ Clearly the proposed numerical integration model is faster. But how do the estim
     \includegraphics[width=0.5\linewidth]{media/faceted_histogram_med.png}
 
 \end{figure}
-
-section
-
-\section{Improvements to the model}
-
-The least squares method provides a more accurate model, but runs in $O(Nl^4_{max})$ time. In this section we propose improvements to our model computed via quadrature.
-
-\subsection{Gradient Descent}
-
-We can apply methods of optimization to minizmize the mean squared error (MSE) of our model. To begin we explicitze the MSE then compute its gradient
-
-
-
-\textbf{TODO} I have already derived the gradient of the MSE with respect to all $C_l^m$ and $S_l^m$ on paper
-\begin{itemize}
-    \item Write up derivation in latex
-\end{itemize}
-
-Computing the gradient vector runs in \textcolor{red}{$O(Nl_{max}^2)$} time
-
-
-\subsubsection{Stochastic Gradient Descent}
-
-Computing the gradient with respect to a single $C_l^m$ requires summing up certain values for all $N$ points of the data set. For larger data sets (e.g. $N_{high} = 1800 * 3600 = 6480000$), this
-computation can become intractable. We can speed up our gradient computation by computing as estimate of the gradient, $\hat\nabla$MSE, by randomly sampling $n$ points from our entire
-data set. This reduces the computation of a gradient vector from $O(Nl_{max}^2)$ to \textcolor{red}{$O(nl_{max}^2)$}. This is an \textbf{insane} improvement to the run time of our algorithm.
-Instead of summing all 6480000 points of the large data set, we could fix $n$ at say $n = 1000$ instead, sacrificing accuracy for a speedeup of 6,480.
-
-\subsection{MCMC Algorithms}
-
-In initial tests my gradient descent learning is \textit{sometimes} reducing the MSE but other times it's increasing it... If I don't figure out exactly what's going wrong 
-then I plan on implementing MCMC algorithms like Gibb's sampling to explore the sample space and only accept proposal vectors that decrease the MSE.
 
 \section{Parallelization} 
 

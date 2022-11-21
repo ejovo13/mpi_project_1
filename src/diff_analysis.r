@@ -248,4 +248,11 @@ df.stat <- df.hi.stat |>
     select(order = ord, mu_small, mu_med, mu_hi = mu) |>
     pivot_longer(c(2:4), names_to = "dataset_size", values_to = "mu")
 
-p <- df.stat |> ggplot(aes(order, mu, col = dataset_size)) + geom_line() + geom_point()
+p <- df.stat |> 
+    ggplot(aes(order, mu, col = dataset_size)) + 
+    scale_color_discrete(labels = c("high", "med", "small")) +
+    geom_line() + 
+    geom_point() + 
+    theme(text = element_text(size = 30)) + 
+    facet_wrap(~ dataset_size)
+

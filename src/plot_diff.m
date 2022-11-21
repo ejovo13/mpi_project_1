@@ -8,7 +8,10 @@ path_diff_100 = '/home/ejovo/MAIN/S7/PPAR/project_1/csv/diff/diff_100_small.csv'
 path_diff_200 = '/home/ejovo/MAIN/S7/PPAR/project_1/csv/diff/diff_200_small.csv';
 path_diff_300 = '/home/ejovo/MAIN/S7/PPAR/project_1/csv/diff/diff_300_small.csv';
 path_diff_400 = '/home/ejovo/MAIN/S7/PPAR/project_1/csv/diff/diff_400_small.csv';
-path_diff_500 = '/home/ejovo/MAIN/S7/PPAR/project_1/csv/diff/diff_500_small.csv';
+% path_diff_500 = '/home/ejovo/MAIN/S7/PPAR/project_1/csv/diff/diff_500_small.csv';
+
+
+
 path_small = '/home/ejovo/MAIN/S7/PPAR/project_1/csv/ETOPO1_small.csv';
 
 % data_diff = readtable(path_diff_5);
@@ -18,7 +21,7 @@ path_small = '/home/ejovo/MAIN/S7/PPAR/project_1/csv/ETOPO1_small.csv';
 % data_diff = readtable(path_diff_100);
 % data_diff = readtable(path_diff_200);
 % data_diff = readtable(path_diff_300);
-data_diff = readtable(path_diff_400);
+% data_diff = readtable(path_diff_400);
 % data_diff = readtable(path_diff_500);
 data_small = readtable(path_small);
 sph = zeros(size(data_small));
