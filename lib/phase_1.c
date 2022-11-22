@@ -208,7 +208,7 @@ double modelComputeCSlmPrecomp(SphericalModel *model, const data_iso *data, cons
     // computeCSPair(l, m, P_lm_th, precomp)
     for (int l = 0; l <= lmax; l++) {
         for (int m = 0; m <= l; m++) {
-            computeCSPair(l, m, data, precomp, C_lm, S_lm, P_lm_th);
+            computeCSPair(l, m, data, precomp, C_lm, S_lm);
         }
     }
 
@@ -278,7 +278,7 @@ double modelComputeCSlmPrecompOMP2(SphericalModel *model, const data_iso *data, 
         #pragma omp for
         for (int i = 0; i < ll; i++) {
             lm_pair lm = i_to_lm(i);
-            computeCSPair(lm.l, lm.m, data, precomp, C_lm, S_lm, P_lm_th);
+            computeCSPair(lm.l, lm.m, data, precomp, C_lm, S_lm);
         }
     }
 
@@ -311,7 +311,7 @@ double modelComputeCSlmPrecompOMP2Threads(SphericalModel *model, const data_iso 
         #pragma omp for
         for (int i = 0; i < ll; i++) {
             lm_pair lm = i_to_lm(i);
-            computeCSPair(lm.l, lm.m, data, precomp, C_lm, S_lm, P_lm_th);
+            computeCSPair(lm.l, lm.m, data, precomp, C_lm, S_lm);
         }
     }
 
@@ -330,10 +330,136 @@ double modelComputeCSlmPrecompMPI(SphericalModel *model, const data_iso *data, c
     const int lmax = model->lmax;
     const int ll = model->ll;
 
+    // Only the ROOT RANK will actually fill the spherical model
+    // Every other rank will, however, compute their own stretch of 
+
+    Clock *clock = Clock_new();
+    Clock_tic(clock);
+
     // Go ahead and compute the workload needed by this rank
-    // Every processor will compute this matrix but it is trivially small
+    int this_workload = compute_workload(ll, world_size, this_rank);
+
+
     Matrix_i *start_end = compute_startend_array(ll, world_size);
+
+    int i_start = vecat_i(start_end, this_rank) + 1;
+    int i_end = vecat_i(start_end, this_rank + 1);
+
+    // Allocate the space for Clm and Slm matrices
+    Matrix_d *Clm = Matrix_new_d(1, this_workload);
+    Matrix_d *Slm = Matrix_new_d(1, this_workload);
+
+    // for (int i = 0; i < world_size; i++) {
+    //     if (i == this_rank) {
+    //         printf("[%d] workload: %d\n", this_rank, this_workload);
+    //         printf("[%d] Allocated matrix of size %d\n", this_rank, this_workload);
+    //         printf("[%d] Processing i \\in [%d, %d]\n", this_rank, i_start, i_end);
+    //     }
+    //     MPI_Barrier(MPI_COMM_WORLD);
+    // }
+    
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    // Here we need to assert the validity of data and precomp
+    assert(data != NULL);
+    assert(precomp != NULL);
+    assert(Clm != NULL);
+    assert(Slm != NULL);
+
+    // for (int i = 0; i < world_size; i++) {
+    //     if (this_rank == i) {
+    //         head_data(data);
+    //     }
+
+    //     MPI_Barrier(MPI_COMM_WORLD);
+    // }   
+
+    // Data looks legit, how about the precomp data? I'm worried that somethings getting fucked up there.
+    // precomp data is legit...
+
+    // printf("[%d] verified  data and precomp\n", this_rank);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    // Something isn't properly initialized before entering computeCSPair
+    for (int i = i_start; i <= i_end; i++) {
+        lm_pair pair = i_to_lm(i);
+        // printf("computing CS(%d, %d)\n", pair.l, pair.m);
+        computeCSPairMPI(pair.l, pair.m, data, precomp, Clm, Slm, i_start);
+    }
+
+
+    Matrix_i *recvcounts = compute_workload_array(ll, world_size);
+    Matrix_i *displacements = compute_displacements(ll, world_size);
+
+    // MPI_Barrier(MPI_COMM_WORLD);
+
+    // for (int i = 0; i < world_size; i++) {
+    //     if (this_rank == i) {
+    //         printf("Clm: i \\in [%d, %d]\t", i_start, i_end);
+    //         Matrix_print_d(Clm);
+    //     }
+
+    //     MPI_Barrier(MPI_COMM_WORLD);
+    // }   
+
+    // MPI_Barrier(MPI_COMM_WORLD); 
+
+    // for (int i = 0; i < world_size; i++) {
+    //     if (this_rank == i) {
+    //         printf("Slm: i \\in [%d, %d]\t", i_start, i_end);
+    //         Matrix_print_d(Slm);
+    //     }
+
+    //     MPI_Barrier(MPI_COMM_WORLD);
+    // }    
+
+    // MPI_Barrier(MPI_COMM_WORLD); 
+
+    // Matrix_free_d(Clm);
+    // Matrix_free_d(Slm);
+
+    // MPI_Finalize();
+    // exit(0);
+    // Now we need to gatherv the results stored in Clm and Slm and add them spherical model
+
+    // C coefficients
+    MPI_Gatherv(Clm->data, 
+        this_workload, 
+        MPI_DOUBLE, 
+        model->C_lm->data, 
+        recvcounts->data, 
+        displacements->data, 
+        MPI_DOUBLE, 
+        0, 
+        MPI_COMM_WORLD);
+
+    // S coefficients
+    MPI_Gatherv(Slm->data, 
+        this_workload, 
+        MPI_DOUBLE, 
+        model->S_lm->data, 
+        recvcounts->data, 
+        displacements->data, 
+        MPI_DOUBLE, 
+        0, 
+        MPI_COMM_WORLD);
+
+    Clock_toc(clock);
+    
+    double runtime = elapsed_time(clock);
+
+    Matrix_free_i(recvcounts);
+    Matrix_free_i(displacements);
+    Matrix_free_d(Clm);
+    Matrix_free_d(Slm);
+    Matrix_free_i(start_end);
+    free(clock);
+
+    return runtime;
+    // Hopefully this shit works lmaoo
 }
+
 
 
 

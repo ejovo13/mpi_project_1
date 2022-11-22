@@ -17,6 +17,7 @@ add_geodesy(benchmark)
 add_geodesy(mse_analysis)
 add_geodesy(new_model)
 add_geodesy(new_model_omp)
+add_geodesy(new_model_mpi)
 add_geodesy(new_model_omp2)
 add_geodesy(parallel_speedup)
 

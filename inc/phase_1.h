@@ -12,6 +12,7 @@
  *========================================================================**/
 #include <stdio.h>
 #include <omp.h>
+#include <mpi.h>
 
 #include "constants.h"
 #include "data.h"
@@ -73,11 +74,18 @@ SphericalModel *newSphericalModel(int lmax, const data_iso *data, const Precomp 
 
 double modelComputeCSlmPrecomp(SphericalModel *model, const data_iso *data, const Precomp *precomp);
 
+// Compute all the coefficients Clm and Slm for a model using OMP parallelization at the level of integration. 
+// The for loop to compute a single Clm or Slm value is split across omp_get_num_threads() threads. We find that this
+// parallelization scheme is incredibly inefficient and actually increases the runtime as we increase the number of 
+// threads
 double modelComputeCSlmPrecompOMP(SphericalModel *model, const data_iso *data, const Precomp *precomp);
 
+// Compute all the coefficients Clm and Slm for a model using OMP parallelization at the coefficient level.
+// The foor loop used to iterate across coefficient computation is split across omp_get_num_threads()
+// This implementation is incredibly efficient and leads to a scalability of nearly 100%
 double modelComputeCSlmPrecompOMP2(SphericalModel *model, const data_iso *data, const Precomp *precomp);
 
-// Choose the number of threads
+// Identical to modelComputeCSlmPrecompOMP2 except with the option to specify the number of threads
 double modelComputeCSlmPrecompOMP2Threads(SphericalModel *model, const data_iso *data, const Precomp *precomp, int nthreads);
 
 // Write the coefficients of a spherical model to CSV
@@ -95,13 +103,15 @@ SphericalModel *loadSphericalModel(const char *bin_in, int lmax);
 void freeSphericalModel(SphericalModel *model);
 
 // Compute AND SET the Clm and Slm pair for a given l and m
-static inline void computeCSPair(int l, int m, const data_iso *data, const Precomp *precomp, Matrix_d *C_lm, Matrix_d *S_lm, Matrix_d *P_lm_th) {
+static inline void computeCSPair(int l, int m, const data_iso *data, const Precomp *precomp, Matrix_d *C_lm, Matrix_d *S_lm) {
 
     // Now that I have the Associated legendre functions and the data efficiently loaded, let's write
     // the code to approximate the integrals
     double c_integral = 0;
     double s_integral = 0;
     int count = 0;
+
+    const Matrix_d *P_lm_th = precomp->Plm_th;
 
     for (int i = 0; i < data->N; i++) {
 
@@ -126,6 +136,44 @@ static inline void computeCSPair(int l, int m, const data_iso *data, const Preco
 
     vecset_d(C_lm, PT(l, m), c_integral);
     vecset_d(S_lm, PT(l, m), s_integral);
+
+}
+
+// Compute AND SET the Clm and Slm pair for a given l and m
+// Change how we fill the C_lm and S_lm matrices.
+static inline void computeCSPairMPI(int l, int m, const data_iso *data, const Precomp *precomp, Matrix_d *C_lm, Matrix_d *S_lm, int i_start) {
+
+    // Now that I have the Associated legendre functions and the data efficiently loaded, let's write
+    // the code to approximate the integrals
+    double c_integral = 0;
+    double s_integral = 0;
+    int count = 0;
+
+    const Matrix_d *P_lm_th = precomp->Plm_th;
+
+    for (int i = 0; i < data->N; i++) {
+
+        int i_th = i % data->t;
+        int i_ph = i / data->t;
+
+        // use the midpoint formula
+        c_integral += data->r[i] * matat_d(P_lm_th, i_th, PT(l, m)) * matat_d(precomp->cosmph, m, i_ph) * vecat_d(precomp->sinth, i_th);
+        s_integral += data->r[i] * matat_d(P_lm_th, i_th, PT(l, m)) * matat_d(precomp->sinmph, m, i_ph) * vecat_d(precomp->sinth, i_th);
+
+        count ++;
+    }
+
+    c_integral *= (data->dp * data->dt) / (2.0 * TWO_PI);
+    s_integral *= (data->dp * data->dt) / (2.0 * TWO_PI);
+
+    //! WARNING this is BLACK MAGIC. I don't know MATHEMATICALLY why this even works... but it does!
+    if (m != 0) {
+        c_integral *= 4;
+        s_integral *= 4;
+    }
+
+    vecset_d(C_lm, PT(l, m) - i_start, c_integral);
+    vecset_d(S_lm, PT(l, m) - i_start, s_integral);
 
 }
 
@@ -178,6 +226,8 @@ static inline void computeCSPairOMP(int l, int m, const data_iso *data, const Pr
 /**========================================================================
  *!                           MPI Implementations
  *========================================================================**/
+// Top-level function to compute all of the coefficients using MPI parallelization techniques
+// Only the root process will end up filling the model.
 double modelComputeCSlmPrecompMPI(SphericalModel *model, const data_iso *data, const Precomp *precomp, int world_size, int this_rank);
 
 #endif //GEODESY_PHASE_1_H
