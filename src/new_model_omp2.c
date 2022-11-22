@@ -28,9 +28,11 @@ char * size_dataset = NULL;
 data_iso *data = NULL;
 int nthreads = 1;
 
+
 bool txt = false;
 bool predict = false;
 bool diff = false;
+bool recompute = false;
 
 void usage(char ** argv)
 {
@@ -39,11 +41,13 @@ void usage(char ** argv)
     printf("--[small | med | hi | ultra]    dataset to model\n");
     printf("--lmodel l                      degree of the model to compute\n");
     printf("--lmax L                        degree of the stored binary file\n");
-    printf("[--threads nthreads]                   number of omp threads\n");
+    printf("[--threads nthreads]            number of omp threads\n");
     printf("[--txt]                         output the model as a text file\n");
     printf("[--predict]                     predict the altitude values (f_hat)\n");
     printf("[--diff]                        predict the altitude values (f_hat) and compute\n");
     printf("                                the difference between the model and predicted value\n");
+    printf("[--recompute                    recompute the model coefficients no matter what files\n");
+    printf("                                are present\n");
     printf("\n");
     exit(0);
 }
@@ -61,7 +65,7 @@ void process_command_line_options(int argc, char ** argv)
         {"predict", no_argument, NULL, 'p'},
         {"threads", required_argument, NULL, 'n'},
         {"diff", no_argument, NULL, 'd'},
-
+        {"recompute", no_argument, NULL, 'r'},
         {NULL, 0, NULL, 0}
     };
 
@@ -106,6 +110,9 @@ void process_command_line_options(int argc, char ** argv)
         case 'n':
             nthreads = atoi(optarg);
             break;
+        case 'r':
+            recompute = true;
+            break;
         default:
             errx(1, "Unknown option\n");
         }
@@ -128,7 +135,7 @@ int main(int argc, char **argv) {
     SphericalModel *model = NULL;
 
     FILE *test_open = fopen(coeff_file_bin, "rb");
-    if (test_open == NULL) {
+    if (test_open == NULL || recompute) {
 
         printf("[main] %s not found, computing Clm and Slm coefficients\n", coeff_file_bin);
         model = newSphericalModel(lmodel, data, precomp);    

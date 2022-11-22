@@ -21,18 +21,6 @@
  * @email   : ejovo13@yahoo.com
  * @date    : 2022-10-28
  *========================================================================**/
-
-#define MPI_ONCE(block) if (this_rank == 0) {\
-    block \
-    }
-
-#define MPI_ORDERED(block) for (int i = 0; i < world_size; i++) {\
-    if (this_rank == i) { \
-        block \
-    } \
-    MPI_Barrier(MPI_COMM_WORLD); \
-}
-
 // Arguments
 typedef struct mpi_args {
 
@@ -44,6 +32,7 @@ typedef struct mpi_args {
     bool txt;
     bool predict;
     bool diff;
+    bool recompute;
 
 } mpi_args;
 
@@ -55,16 +44,18 @@ void init_mpi_args(mpi_args *args) {
     args->txt = false;
     args->predict = false;
     args->diff = false;
+    args->recompute = false;
 }
 
 void print_mpi_args(mpi_args *args) {
-    printf("args = mpi_args {.lmax = %d, .lmodel = %d, .size_dataset = %s, .txt = %d, .predict = %d, diff = %d\n", 
+    printf("args = mpi_args {.lmax = %d, .lmodel = %d, .size_dataset = %s, .txt = %d, .predict = %d, diff = %d, r = %d\n", 
         args->lmax,
         args->lmodel,
         args->size_dataset,
         args->txt,
         args->predict,
-        args->diff);
+        args->diff,
+        args->recompute);
 }
 
 void usage_mpi(char ** argv, int this_rank)
@@ -81,6 +72,8 @@ void usage_mpi(char ** argv, int this_rank)
         printf("[--predict]                     predict the altitude values (f_hat)\n");
         printf("[--diff]                        predict the altitude values (f_hat) and compute\n");
         printf("                                the difference between the model and predicted value\n");
+        printf("[--recompute]                   compute the model coefficients no matter what files\n");
+        printf("                                are present\n");
         printf("\n");
 
     }
@@ -101,6 +94,7 @@ void process_command_line_options(int argc, char ** argv, int this_rank, mpi_arg
         {"txt", no_argument, NULL, 't'},
         {"predict", no_argument, NULL, 'p'},
         {"diff", no_argument, NULL, 'd'},
+        {"recompute", no_argument, NULL, 'r'},
 
         {NULL, 0, NULL, 0}
     };
@@ -143,6 +137,8 @@ void process_command_line_options(int argc, char ** argv, int this_rank, mpi_arg
             args->diff = true;
             args->predict = true;
             break;
+        case 'r':
+            args->recompute = true;
         default:
             errx(1, "Unknown option\n");
         }
@@ -188,7 +184,7 @@ int main(int argc, char **argv) {
     )
 
     FILE *test_open = fopen(coeff_file_bin, "rb");
-    if (test_open == NULL) {
+    if (test_open == NULL, args.recompute) {
 
         MPI_ONCE (
             printf("[main] %s not found, computing Clm and Slm coefficients\n", coeff_file_bin);

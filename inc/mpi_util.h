@@ -8,6 +8,20 @@
  *========================================================================**/
 #include "ejovo.h"
 
+// Run a block of code one time on the root process (rank 0). This macro relies on the 
+// definition of <code>this_rank<\code>
+#define MPI_ONCE(block) if (this_rank == 0) {\
+    block \
+    }
+
+// Run a block of code in order for i = [0, 1, ..., world_size - 1]
+#define MPI_ORDERED(block) for (int i = 0; i < world_size; i++) {\
+    if (this_rank == i) { \
+        block \
+    } \
+    MPI_Barrier(MPI_COMM_WORLD); \
+}
+
 int compute_workload(int total_work, int world_size, int this_rank);
 
 Matrix_i *compute_workload_array(int total_work, const int world_size);
