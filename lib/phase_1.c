@@ -346,9 +346,9 @@ void SphericalModelToTXT(const SphericalModel *model, const char *type) {
     char txt_file[100] = {0};
 
     if (strlen(type) > 0)
-        sprintf(txt_file, "sph_%s_%d.txt", type, model->lmax);
+        sprintf(txt_file, "sph_%s_%d.txt", type, (int) model->lmax);
     else 
-        sprintf(txt_file, "sph_%d.txt", model->lmax);
+        sprintf(txt_file, "sph_%d.txt", (int) model->lmax);
 
 
     FILE *txt_out = fopen(txt_file, "w");
@@ -376,9 +376,9 @@ void SphericalModelToBIN(const SphericalModel *model, const char *type) {
     char bin_file[100] = {0};
 
     if (strlen(type) > 0)
-        sprintf(bin_file, "sph_%s_%d.bin", type, model->lmax);
+        sprintf(bin_file, "sph_%s_%d.bin", type, (int) model->lmax);
     else 
-        sprintf(bin_file, "sph_%d.bin", model->lmax);
+        sprintf(bin_file, "sph_%d.bin", (int) model->lmax);
 
     FILE *bin_out = fopen(bin_file, "wb");
 
@@ -393,7 +393,7 @@ void SphericalModelToBIN(const SphericalModel *model, const char *type) {
 
 SphericalModel *loadSphericalModel(const char *bin_in, int lmax) {
 
-    if (lmax < 0) errx(1, "lmax [%d] must be positive\n");
+    if (lmax < 0) errx(1, "lmax [%d] must be positive\n", lmax);
 
     // Check to make sure file exists
     FILE *bin = fopen(bin_in, "rb");

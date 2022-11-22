@@ -143,7 +143,7 @@ void reduce_csv_to_binary(int n_points, const char *csv_in, const char *binary_o
 
 	for (int i = 0; i < n_points; i++) {
 
-		int k = fscanf(f, "%lf %lf %f\n", &trash_lambda, &trash_ph, &z_float);
+		int k = fscanf(f, "%f %f %f\n", &trash_lambda, &trash_ph, &z_float);
 
         z_int = (int16_t) z_float;
 

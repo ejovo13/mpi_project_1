@@ -188,9 +188,9 @@ int main(int argc, char **argv) {
                 Vector_print_head_f(f_hat, 10);
 
                 for (int i = 0; i < data->N; i++) {
-                    diff = f_hat->data[i] - (float) data->r[i];
-                    printf("f_hat->data[i]: %f, data->r[i]: %u, diff: %f\n", f_hat->data[i], data->r[i], diff);
-                    fprintf(diff_csv, "%f\n", diff);
+                    double res = f_hat->data[i] - (float) data->r[i];
+                    // printf("f_hat->data[i]: %f, data->r[i]: %u, residual: %d\n", f_hat->data[i], data->r[i], res);
+                    fprintf(diff_csv, "%f\n", res);
                 }
 
                 fclose(diff_csv);

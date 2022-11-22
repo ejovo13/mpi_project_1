@@ -199,7 +199,7 @@ void write_iso(const data_iso* data, const char *filename) {
 
     for (int i = 0; i < data->N; i++) {
         // fprintf(out, "%lf\t%lf\t%lf\n", data->th[i % data->t], data->ph[i / data->p], data->r[i]);
-        fprintf(out, "%.15lf\t%.15lf\t%.15lf\n", vecat_d(data->th, i % data->t), vecat_d(data->ph, i / data->t), data->r[i]);
+        fprintf(out, "%.15lf\t%.15lf\t%lf\n", vecat_d(data->th, i % data->t), vecat_d(data->ph, i / data->t), (float) data->r[i]);
     }
 
     fclose(out);
@@ -254,7 +254,7 @@ void free_data_iso(data_iso *data) {
 
 void head_data(const data_iso *data) {
 
-    printf("data_iso @%x: { .N = %d, .t = %d, .p = %d, \n",
+    printf("data_iso @%p: { .N = %d, .t = %d, .p = %d, \n",
         data, data->N, data->t, data->p);
 
     printf("\t\t      .th(1:10) = ");
