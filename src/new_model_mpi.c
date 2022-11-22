@@ -139,6 +139,7 @@ void process_command_line_options(int argc, char ** argv, int this_rank, mpi_arg
             break;
         case 'r':
             args->recompute = true;
+            break;
         default:
             errx(1, "Unknown option\n");
         }
@@ -184,7 +185,7 @@ int main(int argc, char **argv) {
     )
 
     FILE *test_open = fopen(coeff_file_bin, "rb");
-    if (test_open == NULL, args.recompute) {
+    if (test_open == NULL || args.recompute) {
 
         MPI_ONCE (
             printf("[main] %s not found, computing Clm and Slm coefficients\n", coeff_file_bin);

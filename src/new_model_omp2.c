@@ -46,7 +46,7 @@ void usage(char ** argv)
     printf("[--predict]                     predict the altitude values (f_hat)\n");
     printf("[--diff]                        predict the altitude values (f_hat) and compute\n");
     printf("                                the difference between the model and predicted value\n");
-    printf("[--recompute                    recompute the model coefficients no matter what files\n");
+    printf("[--recompute]                   recompute the model coefficients no matter what files\n");
     printf("                                are present\n");
     printf("\n");
     exit(0);
