@@ -99,6 +99,8 @@ void process_command_line_options(int argc, char ** argv, int this_rank, mpi_arg
         {NULL, 0, NULL, 0}
     };
 
+    init_mpi_args(args);
+
     char ch;
 
     while ((ch = getopt_long(argc, argv, "", longopts, NULL)) != -1) {
@@ -147,6 +149,13 @@ void process_command_line_options(int argc, char ** argv, int this_rank, mpi_arg
     /* missing required args? */
     if (args->size_dataset == NULL || args->data == NULL || args->lmax < 0 || args->lmodel < 0) 
         usage_mpi(argv, this_rank);
+
+    if (args->size_dataset == NULL) {
+        printf("Missing dataset size [--small | --med | --hi | --ultra] \n");
+        usage_mpi(argv, this_rank);
+    }
+
+        
 }
 
 
@@ -164,7 +173,6 @@ int main(int argc, char **argv) {
     }
 
     mpi_args args; 
-    init_mpi_args(&args);
     process_command_line_options(argc, argv, this_rank, &args);
 
     if (this_rank == 0) {
@@ -183,7 +191,7 @@ int main(int argc, char **argv) {
     MPI_ORDERED (
         precomp = newPrecomp(0, args.lmodel, args.lmax, args.data, plm_bin);
     )
-
+    
     FILE *test_open = fopen(coeff_file_bin, "rb");
     if (test_open == NULL || args.recompute) {
 
