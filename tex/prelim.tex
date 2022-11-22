@@ -235,7 +235,7 @@ respect to the degree of the model.
     \includegraphics[width=0.6\textwidth]{media/diff_error.png}
     \caption{A Comparison between the average abs error between the least squares estimate and numerical quadrature estimate for the small ETOPO1 data set. Coefficients computed via least squares
     perform slightly better than their quadrature counter parts.}
-    \label{fig:erorr}
+    \label{fig:error}
 \end{figure}
 
 Perhaps surprisingly, we find that there is no significant penalty to using numerical quadrature to estimate a model's coefficients. In fact, computing the coefficients via quadrature allows us to 
@@ -311,32 +311,71 @@ We start off by showing the evolution of the model's estimates as the degree $l$
     \end{minipage}
     \caption{Altitude prediction of a model for varying degrees of a model. In the top row we have models of degree $l \in \{1, 2, 3, 4\}$, middle row $l \in \{5, 10, 20, 50\}$, and finally the bottom
     row $l \in \{100, 200, 300, +\infty\}$. The final visualization on the bottom right corresponds to the observed values of $f$.}
+    \label{fig:earth_models}
 \end{figure}
 
 Evidently, as we increase the degree of the model the difference between the predicted values $\hat f_i$ and the observations $f_i$ will tend to 
 shrink in magnitude. Let's take a look at the distributions of $r = \hat f - f$ for models of degree up to $l = 300$.
 
+Recall to a simpler time where we computed models of degree $l = 20$. Refer to Figure \ref{fig:error} to verify that the average absolute error sits at around 
+600 for a model of the small data with coefficients going up to $l = 20$. Now consider the following distributions of the errors of models built on the small data set
+with degrees up to 300.
 
+\begin{figure}[h!]
+\begin{minipage}{.45\textwidth}
+    \centering
+        \includegraphics[width=0.9\linewidth]{media/small_error_box.png}
+\end{minipage}
+\begin{minipage}{.45\textwidth}
+    \centering
+        \includegraphics[width=0.9\linewidth]{media/small_err.png}
+\end{minipage}
+\caption{Boxplot of the residuals $r_i = \hat f_i - f_i$ (left) for models of degree up to $l = 300$ and the AAE associated (right)
+built on the small dataset.}
+\end{figure}
+
+We notice from these graphs that there seems to be a certain optimal degree of the model, afterwhich the AAE begins to increase.
+For the small data set, this optimum sits at just around 200, and we find that the best model for the small data set has an AAE of 
+148.7594
+
+We conduct an analagous exploration with the medium data set, this time generating models of up to $l = 800$:
+
+\begin{figure}[h!]
+    \begin{minipage}{.45\textwidth}
+        \centering
+            \includegraphics[width=0.9\linewidth]{media/med_error_box.png}
+    \end{minipage}
+    \begin{minipage}{.45\textwidth}
+        \centering
+            \includegraphics[width=0.9\linewidth]{media/med_err.png}
+    \end{minipage}
+    \caption{Boxplot of the residuals $r_i = \hat f_i - f_i$ (left) for models of degree up to $l = 800$ and the AAE associated (right)
+    built on the medium dataset. The red dashed line shows the AAE($l$) of models trained on the small dataset.}
+\end{figure}
+
+Just like with the small dataset, we find that the AAE($l$) decreases as $l$ gets bigger, but there is a certain point for the which the model starts to misbehave
+and the average absolute error, $\frac{1}{N}\sum_{n = 1}^N |\hat f_i - f_i|$, begins to rise. We find that the medium data set has a near optimal model at $l = 600$, with 
+AAE 81.77012. We have nearly halved the AAE by increasing the degree of our model by a factor of 3. Next, we plot the distributions of the residuals for varying $l$.
+\newpage
 
 \begin{figure}
     \centering
-    \includegraphics[width=0.5\linewidth]{media/boxplot_hi.png}
+    \includegraphics[width=0.85\linewidth]{media/med_err_density.png}
+    \caption{Kernel density estimates for the distribution of $r_i$. The model with the lowest variance occurs at $l = 600$.}
 \end{figure}
 
-\begin{figure}
-    \centering
-    \includegraphics[width=0.5\linewidth]{media/density_small.png}
-\end{figure}
+We present the result that the distribution of the residuals approximately follows a cauchy distribution. This observation is important for the analysis of our 
+models because it allows us to conclude that not only do higher degree models have a lower AAE, they also have residuals which are much more tightly packed than their
+lower model counterpart. For example, for a model of degree 600, we find that not only is the AES(600) = 81.77012, but also that 75$\%$ of residuals $|r_i|$ are less
+than 100. If we compare this with a lower degree model, take $l = 300$ for example, we observe that 83.7\% of the residuals for a model of $l = 600$ have magnitude less 
+than AES(300) = 139.704. To put this in perspective, take another look at Figure \ref{fig:earth_models}. 83.7\% of the residuals are \textit{more accurate} than the \textit{average}
+prediction for the highest degree model of Figure \ref{fig:earth_models}. Conclusion: higher degree models have a lower AAE and a lower variance.
 
-\begin{figure}
-    \centering
-    \includegraphics[width=0.75\linewidth]{media/faceted_histogram_med.png}
-
-\end{figure}
+To conclude our analysis of higher degree models, we provide a table with important statistics about the residuals $r_i$.
 
 \section{Parallelization} 
 
-\textbf{TODO} (trivial)
+In this section we present
 
 \section{Conclusion}
 

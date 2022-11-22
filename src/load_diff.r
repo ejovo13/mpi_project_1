@@ -87,6 +87,28 @@ p <- df.small$mean |>
 
 ggsave("small_err.png", p)
 
+p <- df.med$mean |> 
+    ggplot(aes(degree, mu)) + 
+    geom_line(aes(y = small_pad), linetype = "dashed", size = 1, color = "red") +
+    geom_line(size = 1) + 
+    geom_point(aes(col = factor(degree)), size = 5) +
+    theme(text = element_text(size = 20), legend.position = "none") +
+    labs(y = "Average Absolute Erorr (AAE)", x = "Model degree") +
+    scale_y_continuous(breaks = seq(0, 2000, 250)) 
+
+ggsave("med_err.png", p)
+
+p <- df.med$long |> 
+    filter(model == c("L0", "L10", "L200") | model == c("L100", "L400", "L600") | model == c("L800", "L50", "L700")) |>
+    ggplot(aes(error, fill = model)) +
+    # geom_histogram(bins = 1000) +
+    geom_density() +
+    facet_wrap(~ model)
+    # filter(model == c("L0", "L10", "L50", "L100", "L200", "L400", "L600", "L800"))
+ggsave("med_err_density.png", p, width = 10, height = 10)
+
+
+
 df.med$mean |> 
     ggplot(aes(degree, mu)) + 
     geom_line() +
