@@ -39,6 +39,8 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/validate_old_small.sh
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/benchmark_mpi.sh
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/run_mpi.sh
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 # add_executable(mejovo model_ejovo.c)
 # add_executable(old_model old_model.c)
 # add_executable(validate validate.c)
