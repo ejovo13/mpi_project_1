@@ -375,7 +375,56 @@ To conclude our analysis of higher degree models, we provide a table with import
 
 \section{Parallelization} 
 
-In this section we present
+In this section we present our parallelization algorithms and evaluate their scalability and efficiency. 
+
+\subsection{Implementation}
+
+The meat of our program and most computationally expensive component is the computation of the all of the coefficients up until a certain $l_{\mathrm{max}}$. 
+
+\subsubsection{OpenMP}
+
+The first loop that I tried to parallelize with OpenMP was the internal for loop computing the summation of N observations of $f(\phi_i, \theta_i)$ that needs to be run for each $C_l^m, S_l^m$ pair. 
+This seems completely logical, since the summation is the largest loop and we ideally want to reduce the overhead associated with parallel mechanisms like spawning new threads. 
+However, we quickly observed that models of a sufficiently large degree were actually running slower with this parallel paradigm. We posit that even though we targeted the largest loop,
+we failed to consider that for every value $(l, m)$ we are incurring overhead by splitting. For a model of $l = 100$ we end up with over 10,000 parallelization entry points.
+
+    Our second attempt at parallelization targeted the \textit{outer} loop that iterates all the valid $(l, m)$ pairs, computing $C_l^m, S_l^m$. This implementation, which only split 
+    apart a single for-loop, was immediately successful.
+\subsubsection{OpenMPI}
+
+After wrangling some indexing errors introduced when adapting to OpenMPI's memory model, we managed to succesfully compile a parallel mpi implementation
+of our algorithm.
+
+\subsection{Benchmark}
+
+The initial tests of scalability were performed on a desktop with a 12 core cpu. We repeated the computation of models with degre 50, 100, and 200 ten times, then 
+plotted the average runtime of these trials and other pertinent statistics.
+
+
+\begin{figure}[h!]
+\begin{minipage}{0.45\linewidth}
+    \centering
+    \includegraphics[width=0.95\textwidth]{media/mpi_runtime.png}
+\end{minipage}
+\begin{minipage}{0.45\linewidth}
+    \centering
+    \includegraphics[width=0.95\textwidth]{media/mpi_speedup.png}
+\end{minipage}
+\caption{For models degree $l \in [50, 100, 200]$ we computed the average runtime across 10 executions. On the left-hand side we show how the runtime is affected
+by introducing more threads. On the right-hand side we plot the speedup coefficient, $S(p) = \frac{T_s}{T_p}$, defined as the runtime in sequential divided by the 
+runtime with p mpi processes. The dashed line shows the ideal speedup factor, $S(p) = p$.}
+\end{figure}
+
+For a sufficiently large model (in the case of the small data set, $l = 200$), the speedup factor for mpi programs ran with up to 12 processes approaches ideal values. We cannot
+overstate the significance of this result. \textbf{The speedup factor of computing our models of degree $l$ with $p$ mpi processes approaches ideal levels.}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\linewidth]{media/mpi_efficieny.png}
+    \caption{The efficiency, $\frac{S(p)}{p}$, is a test of how much of $p$ threads' theoretical computation power is
+    being harnessed. An ideal system has an efficiency of 1.}
+
+\end{figure}
 
 \section{Conclusion}
 
