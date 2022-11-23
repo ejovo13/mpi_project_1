@@ -84,7 +84,7 @@ ErrorReport t_validate_predictions_small(int l_model) {
     sprintf(binary_cslm, "sph_%d_small.bin", l_model);
     sprintf(binary_prediction_out, "fhat_%d_small.bin", l_model);
 
-    data_iso *data = get_data_small();
+    data_iso *data = get_data_small(true);
 
     const int L0 = 0;
     const int LF = l_model;
@@ -178,7 +178,7 @@ ErrorReport t_validate_predictions_small(int l_model) {
 void t_write_predictions_small(int l_model) {
 
     // Load data
-    const data_iso *data = get_data_small();
+    const data_iso *data = get_data_small(true);
 
     // Load f_hat
     char binary_prediction_in[100] = {0};

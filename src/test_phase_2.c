@@ -32,7 +32,7 @@ int main() {
     const char *p_lm_th_binary = "ETOPO1_small_P1000.bin";
     const char *binary_dataset = "ETOPO1_small.bin";
 
-    data_iso *data = load_data_binary(binary_dataset, t_s, p_s);
+    data_iso *data = load_data_binary(binary_dataset, t_s, p_s, true);
 
     write_binary_cslm(selected_l, bin_lmax_s, data, p_lm_th_binary);
 

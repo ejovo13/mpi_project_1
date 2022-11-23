@@ -34,7 +34,7 @@
 void write_binary_plm(int lmax, const Matrix_d *theta, const char *binary_out);
 
 // Return the entire P_lm_th matrix from a binary file 
-Matrix_d *read_binary_plm(int lmax, int n_theta, const char *binary_filename);
+Matrix_d *read_binary_plm(int lmax, int n_theta, const char *binary_filename, bool __log);
 
 // Return a matrix containing only the P_lm corresponding to l = L
 // Return value is a n_theta x (L + 1) matrix

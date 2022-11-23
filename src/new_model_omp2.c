@@ -83,19 +83,19 @@ void process_command_line_options(int argc, char ** argv)
             break;
         case 's':
             size_dataset = "small";
-            data = get_data_small();
+            data = get_data_small(true);
             break;
         case 'm':
             size_dataset = "med";
-            data = get_data_med();
+            data = get_data_med(true);
             break;
         case 'h':
             size_dataset = "hi";
-            data = get_data_hi();
+            data = get_data_hi(true);
             break;
         case 'u':
             size_dataset = "ultra";
-            data = get_data_ultra();
+            data = get_data_ultra(true);
             break;
         case 't':
             txt = true;

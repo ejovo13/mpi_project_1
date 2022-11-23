@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
     // iso_model *iso = compute_model(lmax, filename_m, t_m, p_m);
 
     // iso_model *iso = compute_model(lmax, data_filename, npoint);
-    iso_model *iso = compute_model_binary(lmax, data_filename, npoint);
+    iso_model *iso = compute_model_binary(lmax, data_filename, npoint, true);
     writeModifiedModel(iso->model, iso->data, "");
     // modelWrit
 

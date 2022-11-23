@@ -39,15 +39,18 @@ void write_binary_plm(int lmax, const Matrix_d *th, const char *binary_file_out)
     free(clock);
 }
 
-Matrix_d *read_binary_plm(int lmax, int n_th, const char *binary_filename) {
+Matrix_d *read_binary_plm(int lmax, int n_th, const char *binary_filename, bool __log) {
 
     const size_t LL = (lmax + 1) * (lmax + 2) / 2;
 
-    printf("[read_binary_plm] LL: %lu, n_theta: %d\n", LL, n_th);
+    if (__log) 
+        printf("[read_binary_plm] LL: %lu, n_theta: %d\n", LL, n_th);
 
     // Allocate a Matrix to store the contents
     Matrix_d *P_lm_th = Matrix_new_d(n_th, LL);
-    printf("[read_binary_plm] Allocated new matrix of size %lu x %lu\n", P_lm_th->nrows, P_lm_th->ncols);
+
+    if (__log)
+        printf("[read_binary_plm] Allocated new matrix of size %lu x %lu\n", P_lm_th->nrows, P_lm_th->ncols);
 
     size_t n_bytes_per_row = sizeof(double) * LL;
 
@@ -59,7 +62,9 @@ Matrix_d *read_binary_plm(int lmax, int n_th, const char *binary_filename) {
     }
 
     fclose(bin);
-    printf("[read_binary_plm] Read from binary file: %s\n", binary_filename);
+
+    if (__log)
+        printf("[read_binary_plm] Read from binary file: %s\n", binary_filename);
 
     return P_lm_th;
 
@@ -126,7 +131,7 @@ Precomp *newPrecomp(int L0, int LF, int Lmax, const data_iso *data, const char *
 
     // Now retrieve the proper values
     // Ideally I should only be loading L0 - LF into memory
-    precomp->Plm_th = read_binary_plm(Lmax, data->t, plm_bin);
+    precomp->Plm_th = read_binary_plm(Lmax, data->t, plm_bin, false);
 
     precomp->sinth  = Matrix_new_d(1, data->t);
     // m goes from 0 to L

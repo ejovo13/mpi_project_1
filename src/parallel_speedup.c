@@ -64,7 +64,7 @@ Matrix_d *time_model(int lmax) {
     char plm_bin[100] = {0};
     sprintf(plm_bin, "ETOPO1_small_P%d.bin", SUP_LMAX);
 
-    data_iso *data = get_data_small();
+    data_iso *data = get_data_small(true);
     // Precomputation data has already been computed for us
     Precomp *precomp = newPrecomp(0, lmax, SUP_LMAX, data, plm_bin);
     SphericalModel *model = newSphericalModel(lmax, data, precomp);

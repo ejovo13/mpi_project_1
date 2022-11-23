@@ -168,12 +168,13 @@ void reduce_csv_to_binary(int n_points, const char *csv_in, const char *binary_o
 
 }
 
-data_iso *load_data_binary(const char *binary_file_in, int t, int p) {
+data_iso *load_data_binary(const char *binary_file_in, int t, int p, bool __log) {
 
     data_iso *data = (data_iso *) malloc(sizeof(*data));
     if (!data) err(1, "Cannot allocate data points structure");
 
-    printf("[load_data_binary] Opening %s\n", binary_file_in);
+    if (__log) 
+        printf("[load_data_binary] Opening %s\n", binary_file_in);
 
     const double d_th = PI / t; 
     const double d_ph = TWO_PI / p;
@@ -217,38 +218,38 @@ data_iso *load_data_binary(const char *binary_file_in, int t, int p) {
  *!                      Binary Datasets
  *========================================================================**/
 
-data_iso *get_data_small() {
+data_iso *get_data_small(bool __log) {
 
     const char *binary_in = "../../bin/ETOPO1_small.bin";
     const int n_theta     = 180;
     const int n_phi       = n_theta * 2;
 
-    return load_data_binary(binary_in, n_theta, n_phi);
+    return load_data_binary(binary_in, n_theta, n_phi, __log);
 }
 
-data_iso *get_data_med() {
+data_iso *get_data_med(bool __log) {
 
     const char *binary_in = "../../bin/ETOPO1_med.bin";
     const int n_theta     = 540;
     const int n_phi       = n_theta * 2;
 
-    return load_data_binary(binary_in, n_theta, n_phi);
+    return load_data_binary(binary_in, n_theta, n_phi, __log);
 }
 
-data_iso *get_data_hi() {
+data_iso *get_data_hi(bool __log) {
 
     const char *binary_in = "../../bin/ETOPO1_hi.bin";
     const int n_theta     = 1800;
     const int n_phi       = n_theta * 2;
 
-    return load_data_binary(binary_in, n_theta, n_phi);
+    return load_data_binary(binary_in, n_theta, n_phi, __log);
 }
 
-data_iso *get_data_ultra() {
+data_iso *get_data_ultra(bool __log) {
 
     const char *binary_in = "../../bin/ETOPO1_ultra.bin";
     const int n_theta     = 10800;
     const int n_phi       = n_theta * 2;
 
-    return load_data_binary(binary_in, n_theta, n_phi);
+    return load_data_binary(binary_in, n_theta, n_phi, __log);
 }

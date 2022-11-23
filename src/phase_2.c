@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
 
     process_command_line_options(argc, argv);
 
-    data_iso *data = load_data_binary(data_bin, ntheta, ntheta * 2);
+    data_iso *data = load_data_binary(data_bin, ntheta, ntheta * 2, true);
 
     head_data(data);
 

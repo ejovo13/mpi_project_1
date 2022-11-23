@@ -56,7 +56,7 @@ void t_small_read_write() {
     printf("Trying to read from %s\n", binary_filename);
 
     write_binary_plm(lmax, theta, binary_filename);
-    Matrix_d *plm = read_binary_plm(lmax, n_theta, binary_filename);
+    Matrix_d *plm = read_binary_plm(lmax, n_theta, binary_filename, true);
 
     Matrix_print_d(plm);
 
@@ -100,7 +100,7 @@ void t_ultra_read() {
 
 void t_comp_small(int l_model) {
 
-    data_iso *data_small = get_data_small();
+    data_iso *data_small = get_data_small(true);
     head_data(data_small);
 
     // data_iso *data_med = get_data_med();

@@ -100,6 +100,7 @@ void process_command_line_options(int argc, char ** argv, int this_rank, mpi_arg
     };
 
     init_mpi_args(args);
+    bool __log = (this_rank == 0);
 
     char ch;
 
@@ -114,19 +115,19 @@ void process_command_line_options(int argc, char ** argv, int this_rank, mpi_arg
             break;
         case 's':
             args->size_dataset = "small";
-            args->data = get_data_small();
+            args->data = get_data_small(__log);
             break;
         case 'm':
             args->size_dataset = "med";
-            args->data = get_data_med();
+            args->data = get_data_med(__log);
             break;
         case 'h':
             args->size_dataset = "hi";
-            args->data = get_data_hi();
+            args->data = get_data_hi(__log);
             break;
         case 'u':
             args->size_dataset = "ultra";
-            args->data = get_data_ultra();
+            args->data = get_data_ultra(__log);
             break;
         case 't':
             args->txt = true;
@@ -182,6 +183,7 @@ int main(int argc, char **argv) {
 
     char plm_bin[100] = {0};
     char coeff_file_bin[100] = {0};
+    
     sprintf(coeff_file_bin, "sph_%s_%d.bin", args.size_dataset, args.lmodel);
     sprintf(plm_bin, "ETOPO1_%s_P%d.bin", args.size_dataset, args.lmax);
 
@@ -239,11 +241,15 @@ int main(int argc, char **argv) {
             /**========================================================================
              *!                           Compute Prediction
                 *========================================================================**/
-            printf("[main] Computing altitude predictions...\n");
+            MPI_ONCE (
+                printf("[main] Computing altitude predictions...\n");
+            )
             Clock_tic(clock);
             f_hat = compute_prediction_omp(model, precomp, args.data);
             Clock_toc(clock);
-            printf("[main] Time to compute prediction: %lfs\n", elapsed_time(clock));
+            MPI_ONCE (
+                printf("[main] Time to compute prediction: %lfs\n", elapsed_time(clock));
+            )
             save_prediction(f_hat, binary_prediction_out);
             Vector_print_head_f(f_hat, 10);
 

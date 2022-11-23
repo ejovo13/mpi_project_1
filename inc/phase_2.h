@@ -31,15 +31,15 @@ void write_binary_cslm(int L, int lmax, const data_iso *data, const char *p_lm_t
 void write_binary_cslmax(int lmax, const data_iso *data, const char *p_lm_th_binary);
 
 // Need to create a data object from a binary file
-data_iso *load_data_binary(const char *binary_file_in, int t, int p);
+data_iso *load_data_binary(const char *binary_file_in, int t, int p, bool log);
 
 /**========================================================================
  *!                         Specific data sets
  *========================================================================**/
-data_iso *get_data_small();
-data_iso *get_data_med();
-data_iso *get_data_hi();
-data_iso *get_data_ultra();
+data_iso *get_data_small(bool);
+data_iso *get_data_med(bool);
+data_iso *get_data_hi(bool);
+data_iso *get_data_ultra(bool);
 
 
 #endif // GEODESY_PHASE_2_H

@@ -405,14 +405,15 @@ iso_model *compute_model(int lmax, const char *datafile, int npoints) {
 //  Coeff = [ C_lm S_lm ]
 //
 // where the length of Coeff is 2 * (lmax + 1) * (lmax + 2) / 2
-iso_model *compute_model_binary(int lmax, const char *binary_in, int npoints) {
+iso_model *compute_model_binary(int lmax, const char *binary_in, int npoints, bool __log) {
 
     const int ll = (lmax + 1) * (lmax + 2) / 2;
     const int n_theta = sqrt(npoints / 2);
     const int n_phi   = 2 * n_theta;
 
-    printf("[compute_model] Constructing model { lmax: %d, t: %d, p: %d}\n", lmax, n_theta, n_phi);
-    data_iso *data = load_data_binary(binary_in, n_theta, n_phi);
+    if (__log) 
+        printf("[compute_model] Constructing model { lmax: %d, t: %d, p: %d}\n", lmax, n_theta, n_phi);
+    data_iso *data = load_data_binary(binary_in, n_theta, n_phi, __log);
 
     // Now let's print the data points that were actually loaded.
 

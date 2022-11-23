@@ -129,7 +129,7 @@ void writeModel(const spherical_model *model, const data_iso *data, const char *
 void writeModifiedModel(const spherical_model *model, const data_iso *data, const char *prefix);
 
 iso_model *compute_model(int lmax, const char *filename, int npoint);
-iso_model *compute_model_binary(int lmax, const char *binary_in, int npoints);
+iso_model *compute_model_binary(int lmax, const char *binary_in, int npoints, bool __log);
 
 void free_spherical_model(spherical_model *sph_model);
 void modelFree(iso_model* iso);
