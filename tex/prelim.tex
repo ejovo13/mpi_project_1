@@ -426,6 +426,63 @@ overstate the significance of this result. \textbf{The speedup factor of computi
 
 \end{figure}
 
+\section{Final phase}
+
+In this section we present the implementation of a final optimization which makes use of the fact that we can compute a given $(C_l^m, S_l^m)$
+independly from all the other coefficients.
+
+To provide context, we begin by establishing some new notation.
+
+\subsection{Ranges}
+
+Let $C_L$ and $S_L$ denote the set of Laplace Series coefficients whose degree is equal to $L$.
+\begin{align*}
+   C_L &= \{C_L^0, C_L^1, ..., C_L^L\} \\
+   S_L &= \{S_L^0, S_L^1, ..., S_L^L\} 
+\end{align*}
+
+Futhermore, let $C_{[L_0, L_f]}$ and $S_{[L_0, L_f]}$ denote the union of the coefficients of degree $L_0$ through $L_f$:
+
+\begin{align*}
+    C_{[L_0, L_f]} &= \bigcup_{l = L_0}^{L_f} C_l \\
+    S_{[L_0, L_f]} &= \bigcup_{l = L_0}^{L_f} S_L
+\end{align*}
+
+To elucidate this new notation, here are a few examples
+
+\begin{align*}
+    C_4 &=\{C_4^0, C_4^1, C_4^2, C_4^3, C_4^4\} \\
+    S_{[2, 3]} &= \{S_2^0, S_2^1, S_2^2\} \cup \{S_3^0, S_3^1, S_3^2, S_3^3\} \\
+    C_{[0, 4]} &= C_0 \cup C_1 \cup C_2 \cup C_3 \cup C_4 \\
+               &= \{C_0^0\} \cup \{C_1^0, C_1^1\} \cup \{C_2^0, C_2^1, C_2^2\} \cup \{C_3^0, C_3^1, C_3^2, C_3^3\} \cup \{C_4^0, C_4^1, C_4^2, C_4^3, C_4^4\} \\
+               &= \{C_0^0, C_1^0, C_1^1, C_2^0, C_2^1, C_2^2, C_3^0, C_3^1, C_3^2, C_3^3, C_4^0, C_4^1, C_4^2, C_4^3, C_4^4\}
+\end{align*}
+
+Any range can easily written as the union of subranges, a fact that will be exploited to save an enormous amount of computational time when constructing
+increasingly larger models. For example, $C_{[0, 7]}$ can be partitioned into $C_{[0, 3]} \cup C_{[4, 7]}$. We already know that $|C_L|$, the cardinality of $C_L$, is equal to 
+$\frac{(L + 1)(L + 2)}{2}$. Furthermore, we'd like to find an expression for the cardinality of a general range, $C_{[L_0, L_f]}$. We solve for this expression by rewriting $C_{[0, L_f]}$ as 
+a union of disjoint subranges:
+
+\begin{align}
+    C_{[0, L_f]} &= C_{[0, L_0 - 1]} \cup C_{[L_0, L_f]} \\
+    |C_{[0, L_f]}| &= |C_{[0, L_0 - 1]}| + |C_{[L_0, L_f]}| \\
+    \frac{(L_f + 1)(L_f + 2)}{2} &= \frac{L_0(L_0 + 1)}{2} + |C_{[L_0, L_f]}|
+\end{align}
+
+Solving for $|C_{[L_0, L_f]}|$ yields 
+\begin{equation}
+    |C_{[L_0, L_f]}| = \frac{(L_f + 1)(L_f + 2) - L_0(L_0 + 1)}{2}
+\end{equation}
+
+Thus $\mathcal{S}_L$, a model of degree $L$, can be written as $C_{[0, L]} \cup S_{[0, L]}$. Assuming that we've already computed the coefficients for a model 
+$\mathcal{S}_L$, to compute a model $\mathcal{S}_{L + n}$, we only need to compute the coefficients $C_{[L + 1, L + n]}$ and $S_{[L + 1, L + n]}$!
+
+Let's explore the consequences of this observation using a concrete example. Suppose we have a precomputed model $\mathcal{S}_{500}$ for the high data set. If we would 
+like to compute a model $\mathcal{S}_{600}$ using traditional means, we would need to compute $\frac{(601)(602)}{2} * 2 = 361802$ new coefficients. If, however, we leverage the fact
+that each $C_l^m$ and $S_l^m$ can be computed independently, we are only required to compute the coefficients $C_{[501, 600]}$ and $S_{[501, 600]}$. Computing the cardinality of 
+$C_{[501, 600]}$ gives us $\frac{(601)(602) - (501)(502)}{2} * 2 = 110300$ new coefficients to compute, which is more than 3 times fewer than for a classic model.
+
+
 \section{Conclusion}
 
 Instead of calculating the model with a direct method that runs in $O(Nl_{max}^4)$ time, We propose a hybrid model that first directly computes the coefficients in $O(Nl_{max}^2)$ time then 
