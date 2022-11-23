@@ -13,6 +13,13 @@ function mpi_s {
     mpirun -np $1 ./new_model_mpi --small --lmodel $2 --lmax $3 --recompute
 }
 
+# mpi_s_cmd(np, lmodel, lmax) to get a _str_ of the
+# command used to create a small model
+function mpi_s_cmd {
+    str="mpirun -np $1 ./new_model_mpi --small --lmodel $2 --lmax $3 --recompute"
+    echo $str
+}
+
 # mpi_m(np, lmodel, lmax)
 function mpi_m {
     mpirun -np $1 ./new_model_mpi --med --lmodel $2 --lmax $3 --recompute
@@ -69,3 +76,4 @@ function time_model {
 # time_model 50 5
 # time_model 100 3
 time_model $1 $2
+echo "Result of mpi_s_cmd -> " $(mpi_s_cmd )"
