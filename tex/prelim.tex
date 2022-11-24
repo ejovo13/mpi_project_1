@@ -155,8 +155,8 @@ We'll use these values later when we study the time it takes to compute our mode
 
 \section{Mathematical Model}
 
-We define $\mathcal{S}_L$ a spherical model of degree $L$ to be the set of coefficients $\{C_0^0, C_1^0, C_1^1, \dots, C_L^L\}$ and \\ 
-$\{S_0^0, S_1^0, SL^L, \dots, S_L^L\}$ that are used in conjonction with (\ref{eq:f_iso}) to provide an estimate of $f$, $\hat f$, defined as:
+We define $\mathcal{M}_L$ a spherical model of degree $L$ to be the set of coefficients $$\{C_0^0, C_1^0, C_1^1, \dots, C_L^L\} \cup \{S_0^0, S_1^0, SL^L, \dots, S_L^L\}$$
+ that are used in conjonction with Figure (\ref{eq:f_iso}) to provide an estimate of $f$, $\hat f$, defined as:
 \begin{equation}
     \hat f(\theta, \phi; L) = \sum_{l = 0}^{L}\sum_{m = 0}^l \bar P_l^m(\cos\theta)[C_l^m\cos m\phi + S_l^m \sin m \phi].
 \end{equation}
@@ -435,53 +435,64 @@ To provide context, we begin by establishing some new notation.
 
 \subsection{Ranges}
 
-Let $C_L$ and $S_L$ denote the set of Laplace Series coefficients whose degree is equal to $L$.
+Let $C_l^*$ and $S_l^*$ denote the set of Laplace Series coefficients whose degree is equal to $l$.
 \begin{align*}
-   C_L &= \{C_L^0, C_L^1, ..., C_L^L\} \\
-   S_L &= \{S_L^0, S_L^1, ..., S_L^L\} 
+   C_l^* &= \{C_l^0, C_l^1, ..., C_l^l\} \\
+   S_l^* &= \{S_l^0, S_l^1, ..., S_l^l\} 
 \end{align*}
 
-Futhermore, let $C_{[L_0, L_f]}$ and $S_{[L_0, L_f]}$ denote the union of the coefficients of degree $L_0$ through $L_f$:
+For example, $C_4^* =\{C_4^0, C_4^1, C_4^2, C_4^3, C_4^4\}$. Additionally, Let 
+$C_{[a, b]}$ and $S_{[a, b]}$ denote the union of the coefficients of degree $a$ through $b$:
 
 \begin{align*}
-    C_{[L_0, L_f]} &= \bigcup_{l = L_0}^{L_f} C_l \\
-    S_{[L_0, L_f]} &= \bigcup_{l = L_0}^{L_f} S_L
+    C_{[a, b]} &= \bigcup_{l = a}^{b} C_l^* \\
+    S_{[a, b]} &= \bigcup_{l = b}^{b} S_l^*
 \end{align*}
 
-To elucidate this new notation, here are a few examples
+In this section we refer to them as \textbf{ranges}. To elucidate this notation, we have
 
 \begin{align*}
-    C_4 &=\{C_4^0, C_4^1, C_4^2, C_4^3, C_4^4\} \\
-    S_{[2, 3]} &= \{S_2^0, S_2^1, S_2^2\} \cup \{S_3^0, S_3^1, S_3^2, S_3^3\} \\
-    C_{[0, 4]} &= C_0 \cup C_1 \cup C_2 \cup C_3 \cup C_4 \\
+    S_{[2, 3]} &= S_2^* \cup S_3^* \\
+               &= \{S_2^0, S_2^1, S_2^2\} \cup \{S_3^0, S_3^1, S_3^2, S_3^3\} \\
+    C_{[0, 4]} &= C_0^* \cup C_1^* \cup C_2^* \cup C_3^* \cup C_4^* \\
                &= \{C_0^0\} \cup \{C_1^0, C_1^1\} \cup \{C_2^0, C_2^1, C_2^2\} \cup \{C_3^0, C_3^1, C_3^2, C_3^3\} \cup \{C_4^0, C_4^1, C_4^2, C_4^3, C_4^4\} \\
-               &= \{C_0^0, C_1^0, C_1^1, C_2^0, C_2^1, C_2^2, C_3^0, C_3^1, C_3^2, C_3^3, C_4^0, C_4^1, C_4^2, C_4^3, C_4^4\}
+               &= \{C_0^0, C_1^0, C_1^1, C_2^0, C_2^1, C_2^2, C_3^0, C_3^1, C_3^2, C_3^3, C_4^0, C_4^1, C_4^2, C_4^3, C_4^4\} 
 \end{align*}
 
-Any range can easily written as the union of subranges, a fact that will be exploited to save an enormous amount of computational time when constructing
-increasingly larger models. For example, $C_{[0, 7]}$ can be partitioned into $C_{[0, 3]} \cup C_{[4, 7]}$. We already know that $|C_L|$, the cardinality of $C_L$, is equal to 
-$\frac{(L + 1)(L + 2)}{2}$. Furthermore, we'd like to find an expression for the cardinality of a general range, $C_{[L_0, L_f]}$. We solve for this expression by rewriting $C_{[0, L_f]}$ as 
-a union of disjoint subranges:
+Any range can easily be partioned into a union of disjoint subranges, a fact that will be exploited to save an enormous amount of computational time when constructing
+increasingly larger models. For example, $C_{[0, 7]}$ can be partitioned into $C_{[0, 3]} \cup C_{[4, 7]}$. $|C_l^*|$, the cardinality of $C_l^*$, is equal to 
+$\frac{(l + 1)(l + 2)}{2}$. We don't immediately see what $|C_{[a, b]}|$ might be equal to but we'd like to find an expression for the cardinality of a general range.
+We solve for this expression by rewriting $C_{[0, b]}$ as a union of disjoint subranges:
 
 \begin{align}
-    C_{[0, L_f]} &= C_{[0, L_0 - 1]} \cup C_{[L_0, L_f]} \\
-    |C_{[0, L_f]}| &= |C_{[0, L_0 - 1]}| + |C_{[L_0, L_f]}| \\
-    \frac{(L_f + 1)(L_f + 2)}{2} &= \frac{L_0(L_0 + 1)}{2} + |C_{[L_0, L_f]}|
+    C_{[0, b]} &= C_{[0, a - 1]} \cup C_{[a, b]} \\
+    |C_{[0, b]}| &= |C_{[0, a - 1]}| + |C_{[a, b]}| \\
+    \frac{(b + 1)(b + 2)}{2} &= \frac{a(a + 1)}{2} + |C_{[a, b]}|
 \end{align}
 
-Solving for $|C_{[L_0, L_f]}|$ yields 
+Solving for $|C_{[a, b]}|$ yields 
 \begin{equation}
-    |C_{[L_0, L_f]}| = \frac{(L_f + 1)(L_f + 2) - L_0(L_0 + 1)}{2}
+    |C_{[a, b]}| = \frac{(b + 1)(b + 2) - a(a + 1)}{2} \label{fig:cardinality}
 \end{equation}
 
-Thus $\mathcal{S}_L$, a model of degree $L$, can be written as $C_{[0, L]} \cup S_{[0, L]}$. Assuming that we've already computed the coefficients for a model 
-$\mathcal{S}_L$, to compute a model $\mathcal{S}_{L + n}$, we only need to compute the coefficients $C_{[L + 1, L + n]}$ and $S_{[L + 1, L + n]}$!
+Thus $\mathcal{M}_{l_\mathrm{max}}$, a model of degree $l_{\mathrm{max}}$, can be written as $\mathcal{M}_{l_\mathrm{max}} = C_{[0, l_{\mathrm{max}}]} \cup S_{[0, l_{\mathrm{max}}]}$. Assuming that we've already computed the coefficients for a model 
+$\mathcal{M}_l$, all we need to compute a model $\mathcal{M}_{l + n}$ is to compute the new coefficients $C_{[l + 1, l + n]}$ and $S_{[l + 1, l + n]}$!
 
-Let's explore the consequences of this observation using a concrete example. Suppose we have a precomputed model $\mathcal{S}_{500}$ for the high data set. If we would 
-like to compute a model $\mathcal{S}_{600}$ using traditional means, we would need to compute $\frac{(601)(602)}{2} * 2 = 361802$ new coefficients. If, however, we leverage the fact
-that each $C_l^m$ and $S_l^m$ can be computed independently, we are only required to compute the coefficients $C_{[501, 600]}$ and $S_{[501, 600]}$. Computing the cardinality of 
-$C_{[501, 600]}$ gives us $\frac{(601)(602) - (501)(502)}{2} * 2 = 110300$ new coefficients to compute, which is more than 3 times fewer than for a classic model.
+Let's explore the consequences of this observation using a concrete example. Suppose we have a precomputed model $\mathcal{M}_{500}$ for the high data set. If we would 
+like to compute a model $\mathcal{M}_{600}$ using traditional means, we would need to compute $\frac{(601)(602)}{2} * 2 = 361802$ new coefficients. If, however, we leverage the fact
+that each $C_l^m$ and $S_l^m$ can be computed independently, we are only required to compute the coefficients $C_{[501, 600]}$ and $S_{[501, 600]}$. Computing
+$|C_{[501, 600]}|$ gives us $\frac{(601)(602) - (501)(502)}{2} * 2 = 110300$ new coefficients to compute, which is more than 3 times fewer than for a classic model. What's significant is that 
+once model of a certain degree has been computed, we don't forget the coefficients for subsequent runs. Practically speaking, this optimization paves the way for computation of models with degree 
+in the thousands. A single run with 128 mpi threads to compute $\mathcal{M}_{400}$ clocked in at 180.546s, $\mathcal{M}_{500}$ in 289.548s, and $\mathcal{M}_{600}$ in 442.99s for the \texttt{ETOPO1\_hi.csv} dataset 
 
+We have already shown that the coefficients $C_l^m$ and $S_l^m$ computed via quadrature are independent of the $l_\mathrm{max}$ of a model. Therefore by storing the coefficients values of computed models in a 
+binary file we accumulate a corpus of models of increasing degree. Storing the previously computed coefficients allows us to spread out the computation of a 
+very large model across separate executions. The original quadrature model (and also the least-squares approach) computes all of the coefficients $(l + 1)(l + 2)$ 
+in a single program execution. Once the necessary machinery is in place, everytime we run our program we will be inexorably advancing towards a higher degree 
+model, instead of wasting time reevaluating coefficients that may have already been computed hundreds of times throughout testing.
+
+    Imagine the difference in wealth accumulated of a fictitious character whose bank account gets reset to zero every single data, compared to someone who only ever makes
+deposits and that persist across days.
 
 \section{Conclusion}
 
