@@ -17,6 +17,8 @@ args_t *new_args(int argc, char **argv) {
     arg->diff = false;
     arg->recompute = false;
     arg->print_args = false;
+    arg->help = false;
+    arg->ascii = true;
 
     return arg;
 }
@@ -24,10 +26,10 @@ args_t *new_args(int argc, char **argv) {
 void usage(char ** argv)
 {
     printf("%s [OPTIONS]\n\n", argv[0]);
-    printf("Options:\n");
+    printf("Options:\n\n");
     printf("--[small | med | hi | ultra]    dataset to model\n");
     printf("--lmodel l                      degree of the model to compute\n");
-    printf("--lbin L                        degree of the stored binary file\n");
+    printf("[--lbin L]                      degree of the stored binary file\n");
     printf("[--from a]                      compute a model of degree lmodel starting from degree a\n");
     printf("                                the difference between the model and predicted value\n");
     printf("[--txt]                         output the model as a text file\n");
@@ -36,8 +38,18 @@ void usage(char ** argv)
     printf("[--recompute]                   compute the model coefficients no matter what files\n");
     printf("                                are present\n");
     printf("[--args]                        print the args_t object storing this runs arguments\n");
+    printf("[--help]                        print this message\n");
+    printf("[--no-ascii]                    dont print the world ascii art\n");
     printf("\n");
-    exit(0);
+    printf("\n");
+    printf("Examples:\n");
+    // printf("");
+    printf("\n");
+    printf("  %s --small --lmodel 100\n", argv[0]);
+    printf("  %s --med --lmodel 300 --lbin 1000\n", argv[0]);
+    printf("  %s --med --lmodel 500 --lbin 1000 --from 300\n", argv[0]);
+    printf("  %s --hi --lmodel 20 --txt --predict --diff\n", argv[0]);
+    // exit(0);
 }
 
 void print_args(const args_t *args) {
@@ -53,6 +65,8 @@ void print_args(const args_t *args) {
     printf("  .recompute\t  = %s\n", btos(args->recompute));
     printf("  .plm_bin\t  = %s\n", args->plm_bin);
     printf("  .coeff_file_bin = %s\n", args->coeff_file_bin);
+    printf("  .print_args\t  = %s\n", btos(args->print_args));
+    printf("  .ascii\t  = %s\n", btos(args->ascii));
     printf("}\n");
 
 }
@@ -72,6 +86,8 @@ args_t *process_command_line_options(int argc, char ** argv, bool __log)
         {"from", required_argument, NULL, 'f'},
         {"recompute", no_argument, NULL, 'r'},
         {"args", no_argument, NULL, 'a'},
+        {"no-ascii", no_argument, NULL, 'c'},
+        {"help", no_argument, NULL, 'H'},
         {NULL, 0, NULL, 0}
     };
 
@@ -100,6 +116,9 @@ args_t *process_command_line_options(int argc, char ** argv, bool __log)
             args->size_dataset = "hi";
             args->data = get_data_hi(__log);
             break;
+        case 'H':
+            args->help = true;
+            break;
         case 'u':
             args->size_dataset = "ultra";
             args->data = get_data_ultra(__log);
@@ -120,19 +139,23 @@ args_t *process_command_line_options(int argc, char ** argv, bool __log)
             break;
         case 'r':
             args->recompute = true;
-        break;
+            break;
         case 'a':
             args->print_args = true;
-        break;
+            break;
+        case 'c':
+            args->ascii = false;
+            break;
         default:
             errx(1, "Unknown option\n");
         }
     }
 
     /* missing required args? */
-    if (args->size_dataset == NULL || args->data == NULL || args->lbin < 0 || args->lmodel < 0)
+    if (args->size_dataset == NULL || args->data == NULL || args->lbin < 0 || args->lmodel < 0) {
         usage(argv);
-
+        exit(0);
+    }
 
     char *plm_bin = calloc(100, sizeof(*plm_bin));
     char *coeff_file_bin = calloc(100, sizeof(*coeff_file_bin));

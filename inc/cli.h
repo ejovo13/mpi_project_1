@@ -42,9 +42,11 @@ typedef struct {
     bool diff;
     bool recompute;
     bool print_args;
+    bool help;
+    bool ascii;
 
-    const char *plm_bin;
-    const char *coeff_file_bin;
+    char *plm_bin;
+    char *coeff_file_bin;
 
 } args_t;
 
@@ -52,6 +54,16 @@ typedef struct {
 static inline const char *btos(bool b) {
     if (b) return "true";
     else return "false";
+}
+
+static inline void freeArgs(args_t *args) {
+
+    if (!args) return;
+
+    if (args->coeff_file_bin) free(args->coeff_file_bin);
+    if (args->data) free_data_iso(args->data);
+    if (args->plm_bin) free(args->plm_bin);
+
 }
 
 void print_args(const args_t *args);
