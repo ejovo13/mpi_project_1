@@ -20,142 +20,44 @@
  * @date    : 2022-10-28
  *========================================================================**/
 
-// Arguments
-int lmodel = -1;
-int lbin = -1;
-char * size_dataset = NULL;
-data_iso *data = NULL;
-
-bool from = false;
-int a = -1;
-
-bool txt = false;
-bool predict = false;
-bool diff = false;
-bool recompute = false;
-
-void usage(char ** argv)
-{
-    printf("%s [OPTIONS]\n\n", argv[0]);
-    printf("Options:\n");
-    printf("--[small | med | hi | ultra]    dataset to model\n");
-    printf("--lmodel l                      degree of the model to compute\n");
-    printf("--lbin L                        degree of the stored binary file\n");
-    printf("[--txt]                         output the model as a text file\n");
-    printf("[--predict]                     predict the altitude values (f_hat)\n");
-    printf("[--diff]                        predict the altitude values (f_hat) and compute\n");
-    printf("[--from a]                      compute a model of degree lmodel starting from degree a\n");
-    printf("                                the difference between the model and predicted value\n");
-    printf("[--recompute]                   compute the model coefficients no matter what files\n");
-    printf("                                are present\n");
-    printf("\n");
-    exit(0);
-}
-
-void process_command_line_options(int argc, char ** argv)
-{
-    struct option longopts[] = {
-        {"lmodel", required_argument, NULL, 'l'},
-        {"lbin", required_argument, NULL, 'L'},
-        {"small", no_argument, NULL, 's'},
-        {"med", no_argument, NULL, 'm'},
-        {"hi", no_argument, NULL, 'h'},
-        {"ultra", no_argument, NULL, 'u'},
-        {"txt", no_argument, NULL, 't'},
-        {"predict", no_argument, NULL, 'p'},
-        {"diff", no_argument, NULL, 'd'},
-        {"from", required_argument, NULL, 'f'},
-        {"recompute", no_argument, NULL, 'r'},
-        {NULL, 0, NULL, 0}
-    };
-    char ch;
-    while ((ch = getopt_long(argc, argv, "", longopts, NULL)) != -1) {
-        switch (ch) {
-
-        case 'L':
-            lbin = atoll(optarg);
-            break;
-        case 'l':
-            lmodel = atoll(optarg);
-            break;
-        case 's':
-            size_dataset = "small";
-            data = get_data_small(true);
-            break;
-        case 'm':
-            size_dataset = "med";
-            data = get_data_med(true);
-            break;
-        case 'h':
-            size_dataset = "hi";
-            data = get_data_hi(true);
-            break;
-        case 'u':
-            size_dataset = "ultra";
-            data = get_data_ultra(true);
-            break;
-        case 't':
-            txt = true;
-            break;
-        case 'p':
-            predict = true;
-            break;
-        case 'd':
-            diff = true;
-            predict = true;
-            break;
-        case 'f':
-            from = true;
-            a = atoi(optarg);
-            break;
-        case 'r':
-            recompute = true;
-        break;
-        default:
-            errx(1, "Unknown option\n");
-        }
-    }
-    /* missing required args? */
-    if (size_dataset == NULL || data == NULL || lbin < 0 || lmodel < 0)
-        usage(argv);
-}
-
 int main(int argc, char **argv) {
 
-    process_command_line_options(argc, argv);
+    args_t *args = process_command_line_options(argc, argv, false);
+
+    print_args(args);
 
     char plm_bin[100] = {0};
     char coeff_file_bin[100] = {0};
-    sprintf(coeff_file_bin, "sph_%s_%d.bin", size_dataset, lmodel);
-    sprintf(plm_bin, "ETOPO1_%s_P%d.bin", size_dataset, lbin);
 
+    sprintf(coeff_file_bin, "sph_%s_%d.bin", args->size_dataset, args->lmodel);
+    sprintf(plm_bin, "ETOPO1_%s_P%d.bin", args->size_dataset, args->lbin);
 
-    if (from) {
-        assert(a != 0);
-        printf("Computing model with degree %d from %d\n", lmodel, a);
+    if (args->from) {
+        assert(args->a != 0);
+        printf("Computing model with degree %d from %d\n", args->lmodel, args->a);
     } else {
         printf("==============================\n");
-        printf("Computing model of degree %d\n", lmodel);
+        printf("Computing model of degree %d\n", args->lmodel);
         printf("==============================\n");
     }
 
 
-    Precomp *precomp = newPrecomp(0, lmodel, lbin, data, plm_bin);
-    SphericalModel *model = buildSphericalModel(data, lmodel, coeff_file_bin, recompute, from, a);
+    Precomp *precomp = newPrecomp(0, args->lmodel, args->lbin, args->data, plm_bin);
+    SphericalModel *model = buildSphericalModel(args->data, args->lmodel, coeff_file_bin, args->recompute, args->from, args->a);
 
     printf("[main] Model built!\n");
 
     // output the model to a text file
-    if (txt) {
-        SphericalModelToTXT(model, size_dataset);
+    if (args->txt) {
+        SphericalModelToTXT(model, args->size_dataset);
     }
 
     // compute the predicted values and store them in a binary file
     // fhat_<size_dataset>_<lmodel>.bin
-    if (predict) {
+    if (args->predict) {
 
         char binary_prediction_out[100] = {0};
-        sprintf(binary_prediction_out, "fhat_%s_%d.bin", size_dataset, lmodel);
+        sprintf(binary_prediction_out, "fhat_%s_%d.bin", args->size_dataset, args->lmodel);
         Matrix_f *f_hat = NULL;
         Clock *clock = Clock_new();
 
@@ -167,7 +69,7 @@ int main(int argc, char **argv) {
             *========================================================================**/
             printf("[main] Computing altitude predictions...\n");
             Clock_tic(clock);
-            f_hat = compute_prediction(model, precomp, data);
+            f_hat = compute_prediction(model, precomp, args->data);
             Clock_toc(clock);
             printf("[main] Time to compute prediction: %lfs\n", elapsed_time(clock));
             save_prediction(f_hat, binary_prediction_out);
@@ -179,19 +81,19 @@ int main(int argc, char **argv) {
             fclose(test_open);
         }
 
-        head_data(data);
+        head_data(args->data);
 
         // We can't reach this point before having the predictions already computed
-        if (diff) {
+        if (args->diff) {
 
             char diff_out[100] = {0};
-            sprintf(diff_out, "diff_%s_%d.csv", size_dataset, lmodel);
+            sprintf(diff_out, "diff_%s_%d.csv", args->size_dataset, args->lmodel);
 
             // test_open = fopen(diff_out, "r");
             // if (test_open == NULL) {
 
                 Clock_tic(clock);
-                f_hat = load_prediction(binary_prediction_out, data->N);
+                f_hat = load_prediction(binary_prediction_out, args->data->N);
                 Clock_toc(clock);
                 printf("[main] Loaded predictions in %lfs\n", elapsed_time(clock));
                 printf("[main] Computing differences\n");
@@ -199,9 +101,9 @@ int main(int argc, char **argv) {
                 fprintf(diff_csv, "diff\n");
                 Vector_print_head_f(f_hat, 10);
 
-                for (int i = 0; i < data->N; i++) {
-                    double res = f_hat->data[i] - (float) data->r[i];
-                    printf("f_hat->data[i]: %f, data->r[i]: %u, residual: %f\n", f_hat->data[i], data->r[i], res);
+                for (int i = 0; i < args->data->N; i++) {
+                    double res = f_hat->data[i] - (float) args->data->r[i];
+                    printf("f_hat->data[i]: %f, data->r[i]: %u, residual: %f\n", f_hat->data[i], args->data->r[i], res);
                     fprintf(diff_csv, "%f\n", res);
                 }
 

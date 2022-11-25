@@ -2,24 +2,24 @@
 library(tidyverse)
 library(readr)
 library(pracma)
-library(imager)
+# library(imager)
 library(viridis)
 library(ggdark)
 # library(raster)
 
 data.small <- list(size = "small", N = 64800)
 data.med   <- list(size = "med", N = 583200)
-data.hi    <- list(size = "hi", N = 64800)
+data.hi    <- list(size = "hi", N = 1080 * 2160)
 # data.small <- list(size = "small", N = 64800)
 
 
-process_dataset <- function(data) {
+process_dataset <- function(data, reduction = 6) {
 
     csv <- paste("csv/ETOPO1_", data$size, ".csv", sep = "")
     df <- as_tibble(read.table(csv), header = FALSE, sep = "\t")
     colnames(df) <- c("ph", "th", "r")
 
-    n_th <- sqrt(N / 2)
+    n_th <- sqrt(data$N / 2)
     n_ph <- n_th * 2
 
     d_th <- pi / (n_th)
@@ -53,7 +53,6 @@ process_dataset <- function(data) {
     #     )
     # print(p)
 
-    reduction <- 6 
     df |> mutate(i = 1:nrow(df)) |> filter(mod(i, reduction) == 0)
 
     # Let's imagine we are filling a nth x nph matrix column wise

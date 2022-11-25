@@ -9,6 +9,8 @@
  * @date    : 2022-10-15
  *========================================================================**/
 
+#include "ejovo.h"
+
 #include "constants.h"
 #include "data.h"
 // #include "factorial.h"
@@ -20,5 +22,9 @@
 #include "phase_2.h"
 #include "phase_3.h"
 #include "ranges.h"
+#include "cli.h"
+#include "omp.h"
+#include "mpi.h"
+
 
 #endif // GEODESY_GEODESY_H
