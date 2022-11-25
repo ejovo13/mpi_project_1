@@ -26,6 +26,19 @@ typedef struct laplace_range_t {
 
 } range;
 
+static inline void freeRange(range *r) {
+
+    if (!r) return;
+
+    if (r->C_lm) 
+        Matrix_free_d(r->C_lm);
+
+    if (r->S_lm)
+        Matrix_free_d(r->S_lm);
+
+    free(r);
+}
+
 // Allocate space for and return a new range, cloning the input matrices.
 // If C_lm or S_lm are null, they will be replaced with a zeros vector
 range* newRange(int a, int b, const Matrix_d* C_lm, const Matrix_d* S_lm);
@@ -54,6 +67,11 @@ range *as_range(const SphericalModel *model);
 
 void printRangeCoeff(const range *r);
 
+range *modelComputeRange(int a, int b, const data_iso *data, const Precomp *precomp);
 
+// Add a range to a spherical model, returning a new model
+SphericalModel *SphericalModelAddRange(const SphericalModel *model, const range *r);
+
+bool models_equal(const SphericalModel *lhs, const SphericalModel *rhs);
 
 #endif // GEODESY_RANGES_H

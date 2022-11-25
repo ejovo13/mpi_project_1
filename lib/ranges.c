@@ -77,6 +77,19 @@ bool ranges_equal(const range *lhs, const range *rhs) {
     return true;
 }
 
+bool models_equal(const SphericalModel *lhs, const SphericalModel *rhs) {
+
+    if (lhs->lmax != rhs->lmax) return false;
+    if (lhs->ll != rhs->ll) return false;
+
+    for (int i = 0; i < lhs->ll; i++) {
+        if (lhs->C_lm->data[i] != rhs->C_lm->data[i]) return false;
+        if (lhs->S_lm->data[i] != rhs->S_lm->data[i]) return false;
+    }
+
+    return true;
+}
+
 // Extract the range[a, b] from a computed model
 range *SphericalModelExtractRange(const SphericalModel *model, int l_0, int l_f) {
 
@@ -119,5 +132,68 @@ range *SphericalModelToRange(const SphericalModel *model) {
 
 range *as_range(const SphericalModel *model) {
     return SphericalModelToRange(model);
+}
+
+// Compute the range[a, b] of C and L coefficients
+range *modelComputeRange(int a, int b, const data_iso *data, const Precomp *precomp) {
+
+    range *r = newRange(a, b, NULL, NULL); // Coefficients initialized as zeros(1, ((b + 1)(b + 2) - a(a + 1)) / 2)
+
+    // We want to iterate starting at a and ending at b
+
+    Matrix_d *C_lm = r->C_lm, *S_lm = r->S_lm;
+    // Matrix_d *P_lm_th = precomp->Plm_th;
+
+    printf("[modelComputeCSlm] Computing coefficien range [%d, %d] in serial\n", a, b);
+
+    Clock *clock = Clock_new();
+    Clock_tic(clock);
+
+    cs_pair cs;
+
+    // A single iteration of this loop can be abstracted away as:
+    // computeCSPair(l, m, P_lm_th, precomp)
+
+    for (int l = a, i = 0; l <= b; l++) {
+        for (int m = 0; m <= l; m++) {
+            
+            // printf("Computing [%d]th coefficient\n", i);
+
+            cs = computeCSPairAlt(l, m, data, precomp);
+            vecset_d(r->C_lm, i, cs.c);
+            vecset_d(r->S_lm, i, cs.s);
+            i++;
+        }
+    }
+
+    Clock_toc(clock);
+    double time = elapsed_time(clock);
+    free(clock);
+
+    // printf("[modelComputeRange] took %lf s\n", time);
+
+    return r;
+
+}
+
+SphericalModel *SphericalModelAddRange(const SphericalModel *model, const range *r) {
+
+    range *r_model = SphericalModelToRange(model);
+    range *r_union = ranges_union(r_model, r);
+
+    // Transfer the matrices from this union to the model.
+
+    SphericalModel *new_model = newSphericalModel(r->b);
+
+    new_model->C_lm = r_union->C_lm;
+    new_model->S_lm = r_union->S_lm;
+
+    r_union->C_lm = NULL;
+    r_union->S_lm = NULL; // don't manage memory of matrices anymore
+
+    freeRange(r_model);
+
+    return new_model;
+
 }
 

@@ -70,7 +70,7 @@ void freePrecomp(Precomp *precomp);
 
 // Compute the Coefficients Clm and Slm up until l = lmax, and store them in a newly 
 // allocated SphericalModel
-SphericalModel *newSphericalModel(int lmax, const data_iso *data, const Precomp *precomp);
+SphericalModel *newSphericalModel(int lmax);
 
 double modelComputeCSlmPrecomp(SphericalModel *model, const data_iso *data, const Precomp *precomp);
 
@@ -101,6 +101,13 @@ void SphericalModelToBIN(const SphericalModel *model, const char *type);
 SphericalModel *loadSphericalModel(const char *bin_in, int lmax);
 
 void freeSphericalModel(SphericalModel *model);
+
+typedef struct {
+
+    double c;
+    double s;
+
+} cs_pair;
 
 // Compute AND SET the Clm and Slm pair for a given l and m
 static inline void computeCSPair(int l, int m, const data_iso *data, const Precomp *precomp, Matrix_d *C_lm, Matrix_d *S_lm) {
@@ -137,6 +144,42 @@ static inline void computeCSPair(int l, int m, const data_iso *data, const Preco
     vecset_d(C_lm, PT(l, m), c_integral);
     vecset_d(S_lm, PT(l, m), s_integral);
 
+}
+
+// Compute the Clm and Slm coefficients and return the value (instead of setting at a guess of the position) 
+static inline cs_pair computeCSPairAlt(int l, int m, const data_iso *data, const Precomp *precomp) {
+
+    // Now that I have the Associated legendre functions and the data efficiently loaded, let's write
+    // the code to approximate the integrals
+    double c_integral = 0;
+    double s_integral = 0;
+    int count = 0;
+
+    const Matrix_d *P_lm_th = precomp->Plm_th;
+
+    for (int i = 0; i < data->N; i++) {
+
+        int i_th = i % data->t;
+        int i_ph = i / data->t;
+
+        // use the midpoint formula
+        c_integral += data->r[i] * matat_d(P_lm_th, i_th, PT(l, m)) * matat_d(precomp->cosmph, m, i_ph) * vecat_d(precomp->sinth, i_th);
+        s_integral += data->r[i] * matat_d(P_lm_th, i_th, PT(l, m)) * matat_d(precomp->sinmph, m, i_ph) * vecat_d(precomp->sinth, i_th);
+
+        count ++;
+    }
+
+    c_integral *= (data->dp * data->dt) / (2.0 * TWO_PI);
+    s_integral *= (data->dp * data->dt) / (2.0 * TWO_PI);
+
+    //! WARNING this is BLACK MAGIC. I don't know MATHEMATICALLY why this even works... but it does!
+    if (m != 0) {
+        c_integral *= 4;
+        s_integral *= 4;
+    }
+
+    cs_pair cs = { .c = c_integral, .s = s_integral };
+    return cs;
 }
 
 // Compute AND SET the Clm and Slm pair for a given l and m
@@ -229,5 +272,10 @@ static inline void computeCSPairOMP(int l, int m, const data_iso *data, const Pr
 // Top-level function to compute all of the coefficients using MPI parallelization techniques
 // Only the root process will end up filling the model.
 double modelComputeCSlmPrecompMPI(SphericalModel *model, const data_iso *data, const Precomp *precomp, int world_size, int this_rank);
+
+// Allocate space for and load (or compute) a spherical model of degree lmodel
+SphericalModel *buildSphericalModel(const data_iso *data, int lmodel, const char *coeff_file_bin, bool recompute, bool from, int a);
+
+double modelComputeCSlmPrecompAlt(SphericalModel *model, const data_iso *data, const Precomp *precomp);
 
 #endif //GEODESY_PHASE_1_H

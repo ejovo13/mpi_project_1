@@ -200,7 +200,7 @@ int main(int argc, char **argv) {
         MPI_ONCE (
             printf("[main] %s not found, computing Clm and Slm coefficients\n", coeff_file_bin);
         )
-        model = newSphericalModel(args.lmodel, args.data, precomp);    
+        model = newSphericalModel(args.lmodel);    
 
         MPI_Barrier(MPI_COMM_WORLD);
         

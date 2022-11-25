@@ -21,14 +21,18 @@
  *========================================================================**/
 
 // Arguments
-int lmax = -1;
 int lmodel = -1;
+int lbin = -1;
 char * size_dataset = NULL;
 data_iso *data = NULL;
+
+bool from = false;
+int a = -1;
 
 bool txt = false;
 bool predict = false;
 bool diff = false;
+bool recompute = false;
 
 void usage(char ** argv)
 {
@@ -36,11 +40,14 @@ void usage(char ** argv)
     printf("Options:\n");
     printf("--[small | med | hi | ultra]    dataset to model\n");
     printf("--lmodel l                      degree of the model to compute\n");
-    printf("--lmax L                        degree of the stored binary file\n");
+    printf("--lbin L                        degree of the stored binary file\n");
     printf("[--txt]                         output the model as a text file\n");
     printf("[--predict]                     predict the altitude values (f_hat)\n");
     printf("[--diff]                        predict the altitude values (f_hat) and compute\n");
+    printf("[--from a]                      compute a model of degree lmodel starting from degree a\n");
     printf("                                the difference between the model and predicted value\n");
+    printf("[--recompute]                   compute the model coefficients no matter what files\n");
+    printf("                                are present\n");
     printf("\n");
     exit(0);
 }
@@ -48,8 +55,8 @@ void usage(char ** argv)
 void process_command_line_options(int argc, char ** argv)
 {
     struct option longopts[] = {
-        {"lmax", required_argument, NULL, 'l'},
-        {"lmodel", required_argument, NULL, 'L'},
+        {"lmodel", required_argument, NULL, 'l'},
+        {"lbin", required_argument, NULL, 'L'},
         {"small", no_argument, NULL, 's'},
         {"med", no_argument, NULL, 'm'},
         {"hi", no_argument, NULL, 'h'},
@@ -57,6 +64,8 @@ void process_command_line_options(int argc, char ** argv)
         {"txt", no_argument, NULL, 't'},
         {"predict", no_argument, NULL, 'p'},
         {"diff", no_argument, NULL, 'd'},
+        {"from", required_argument, NULL, 'f'},
+        {"recompute", no_argument, NULL, 'r'},
         {NULL, 0, NULL, 0}
     };
     char ch;
@@ -64,10 +73,10 @@ void process_command_line_options(int argc, char ** argv)
         switch (ch) {
 
         case 'L':
-            lmodel = atoll(optarg);
+            lbin = atoll(optarg);
             break;
         case 'l':
-            lmax = atoll(optarg);
+            lmodel = atoll(optarg);
             break;
         case 's':
             size_dataset = "small";
@@ -95,12 +104,19 @@ void process_command_line_options(int argc, char ** argv)
             diff = true;
             predict = true;
             break;
+        case 'f':
+            from = true;
+            a = atoi(optarg);
+            break;
+        case 'r':
+            recompute = true;
+        break;
         default:
             errx(1, "Unknown option\n");
         }
     }
     /* missing required args? */
-    if (size_dataset == NULL || data == NULL || lmax < 0 || lmodel < 0)
+    if (size_dataset == NULL || data == NULL || lbin < 0 || lmodel < 0)
         usage(argv);
 }
 
@@ -111,27 +127,23 @@ int main(int argc, char **argv) {
     char plm_bin[100] = {0};
     char coeff_file_bin[100] = {0};
     sprintf(coeff_file_bin, "sph_%s_%d.bin", size_dataset, lmodel);
-    sprintf(plm_bin, "ETOPO1_%s_P%d.bin", size_dataset, lmax);
+    sprintf(plm_bin, "ETOPO1_%s_P%d.bin", size_dataset, lbin);
 
-    Precomp *precomp = newPrecomp(0, lmodel, lmax, data, plm_bin);
-    SphericalModel *model = NULL;
 
-    FILE *test_open = fopen(coeff_file_bin, "rb");
-    if (test_open == NULL) {
-
-        printf("[main] %s not found, computing Clm and Slm coefficients\n", coeff_file_bin);
-        model = newSphericalModel(lmodel, data, precomp);    
-        double time = modelComputeCSlmPrecomp(model, data, precomp);
-        printf("[main] Computed coefficients for L = %d in %lfs\n", lmodel, time);
-        SphericalModelToBIN(model, size_dataset);
-
+    if (from) {
+        assert(a != 0);
+        printf("Computing model with degree %d from %d\n", lmodel, a);
     } else {
-
-        // Model file coeff_file_bin already exists, so load from it
-        fclose(test_open);
-        model = loadSphericalModel(coeff_file_bin, lmodel);
-
+        printf("==============================\n");
+        printf("Computing model of degree %d\n", lmodel);
+        printf("==============================\n");
     }
+
+
+    Precomp *precomp = newPrecomp(0, lmodel, lbin, data, plm_bin);
+    SphericalModel *model = buildSphericalModel(data, lmodel, coeff_file_bin, recompute, from, a);
+
+    printf("[main] Model built!\n");
 
     // output the model to a text file
     if (txt) {
@@ -152,7 +164,7 @@ int main(int argc, char **argv) {
 
             /**========================================================================
              *!                           Compute Prediction
-                *========================================================================**/
+            *========================================================================**/
             printf("[main] Computing altitude predictions...\n");
             Clock_tic(clock);
             f_hat = compute_prediction(model, precomp, data);

@@ -224,7 +224,10 @@ data_iso *get_data_small(bool __log) {
     const int n_theta     = 180;
     const int n_phi       = n_theta * 2;
 
-    return load_data_binary(binary_in, n_theta, n_phi, __log);
+    data_iso *data = load_data_binary(binary_in, n_theta, n_phi, __log);
+    data->size_dataset = "small";
+
+    return data; 
 }
 
 data_iso *get_data_med(bool __log) {
@@ -233,7 +236,10 @@ data_iso *get_data_med(bool __log) {
     const int n_theta     = 540;
     const int n_phi       = n_theta * 2;
 
-    return load_data_binary(binary_in, n_theta, n_phi, __log);
+    data_iso *data = load_data_binary(binary_in, n_theta, n_phi, __log);
+    data->size_dataset = "med";
+
+    return data; 
 }
 
 data_iso *get_data_hi(bool __log) {
@@ -242,7 +248,10 @@ data_iso *get_data_hi(bool __log) {
     const int n_theta     = 1800;
     const int n_phi       = n_theta * 2;
 
-    return load_data_binary(binary_in, n_theta, n_phi, __log);
+    data_iso *data = load_data_binary(binary_in, n_theta, n_phi, __log);
+    data->size_dataset = "hi";
+
+    return data; 
 }
 
 data_iso *get_data_ultra(bool __log) {
@@ -251,5 +260,8 @@ data_iso *get_data_ultra(bool __log) {
     const int n_theta     = 10800;
     const int n_phi       = n_theta * 2;
 
-    return load_data_binary(binary_in, n_theta, n_phi, __log);
+    data_iso *data = load_data_binary(binary_in, n_theta, n_phi, __log);
+    data->size_dataset = "ultra";
+
+    return data; 
 }

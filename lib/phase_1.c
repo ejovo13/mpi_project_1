@@ -169,7 +169,7 @@ void freePrecomp(Precomp *precomp) {
  *!                           Spherical Model
  *========================================================================**/
 
-SphericalModel *newSphericalModel(int lmax, const data_iso *data, const Precomp *precomp) {
+SphericalModel *newSphericalModel(int lmax) {
 
     SphericalModel *model = (SphericalModel *) malloc(sizeof(*model));
 
@@ -195,6 +195,106 @@ SphericalModel *newSphericalModel(int lmax, const data_iso *data, const Precomp 
     return model;
 }
 
+// Allocate the space for and find the coefficients of a spherical model M of degree l_max
+SphericalModel *buildSphericalModel(const data_iso *data, int lmodel, const char *coeff_file_bin, bool recompute, bool from, int a) {
+
+    char plm_bin[100] = {0};
+    // Move precomp processing here to remove a parameter in the interface.
+    const int lbin = lmodel;
+    sprintf(plm_bin, "ETOPO1_%s_P%d.bin", data->size_dataset, lbin);
+    Precomp *precomp = newPrecomp(0, lmodel, lbin, data, plm_bin);
+
+    SphericalModel *model = NULL; // Declare our model pointer
+
+    char from_a_bin[100] = {0};
+    Clock *clock = Clock_new();
+
+    // Let's first check to see if the binary file already exists. If it exists, load from it.
+    FILE *test_open = fopen(coeff_file_bin, "rb");
+    if (test_open == NULL || recompute) {
+
+        // double time = modelComputeCSlmPrecomp(model, data, precomp);
+        if (recompute) {
+            printf("[buildSphericalModel] recomputing coefficients\n");
+        } else {
+            printf("[buildSphericalModel] %s not found, computing Clm and Slm coefficients\n", coeff_file_bin);
+        } 
+        double time = 0;
+
+        range *r;
+
+        if (from) {
+
+            sprintf(from_a_bin, "sph_%s_%d.bin", data->size_dataset, a);
+            // build a first model up to the a degree
+            printf("[buildSphericalModel] First building model from a: %d\n", a);
+            model = buildSphericalModel(data, a, from_a_bin, false, false, 0);
+            printf("[buildSphericalModel] Now computing range [%d, %d]\n", a, lmodel);
+            Clock_tic(clock);
+            r = modelComputeRange(a, lmodel, data, precomp);
+            Clock_toc(clock);
+            model = SphericalModelAddRange(model, r);
+            time = elapsed_time(clock);
+
+            // printRange(r);
+        } else {
+            // Recompute all of the coefficients
+            printf("[buildSphericalModel] Computing full set of coefficients\n");
+            model = newSphericalModel(lmodel);
+            Clock_tic(clock);
+            // time = modelComputeCSlmPrecompAlt(model, data, precomp);
+            time = modelComputeCSlmPrecomp(model, data, precomp);
+            Clock_toc(clock);
+            
+        }
+
+        printf("[buildSpherialModel] Computed coefficients for L = %d in %lfs\n", lmodel, time);
+        SphericalModelToBIN(model, data->size_dataset);
+
+    } else {
+
+        // Model file coeff_file_bin already exists, so load from it
+        fclose(test_open);
+        model = loadSphericalModel(coeff_file_bin, lmodel);
+
+    }
+
+    return model;
+
+}
+
+// call computeCSPairAlt to return a { .c, .l } structure instead of setting in place.
+double modelComputeCSlmPrecompAlt(SphericalModel *model, const data_iso *data, const Precomp *precomp) {
+
+    const int lmax = model->lmax;
+    const int ll = model->ll;
+
+    Matrix_d *C_lm = model->C_lm, *S_lm = model->S_lm;
+    Matrix_d *P_lm_th = precomp->Plm_th;
+
+    printf("[modelComputeCSlmPrecompAlt] Computing coefficients in serial\n");
+
+    Clock *clock = Clock_new();
+    Clock_tic(clock);
+
+    // A single iteration of this loop can be abstracted away as:
+    // computeCSPair(l, m, P_lm_th, precomp)
+    for (int l = 0, i = 0; l <= lmax; l++) {
+        for (int m = 0; m <= l; m++, i++) {
+            cs_pair cs = computeCSPairAlt(l, m, data, precomp);
+
+            model->C_lm->data[i] = cs.c;
+            model->S_lm->data[i] = cs.s;
+        }
+    }
+
+    Clock_toc(clock);
+    double time = elapsed_time(clock);
+    free(clock);
+
+    return time;
+
+}
 // Compute the value of Clm and Slm coefficients using the new Precomp data structure
 double modelComputeCSlmPrecomp(SphericalModel *model, const data_iso *data, const Precomp *precomp) {
 
@@ -204,7 +304,7 @@ double modelComputeCSlmPrecomp(SphericalModel *model, const data_iso *data, cons
     Matrix_d *C_lm = model->C_lm, *S_lm = model->S_lm;
     Matrix_d *P_lm_th = precomp->Plm_th;
 
-    printf("[modelComputeCSlm] Computing coefficients in serial\n");
+    printf("[modelComputeCSlmPrecomp] Computing coefficients in serial\n");
 
     Clock *clock = Clock_new();
     Clock_tic(clock);
@@ -213,6 +313,7 @@ double modelComputeCSlmPrecomp(SphericalModel *model, const data_iso *data, cons
     // computeCSPair(l, m, P_lm_th, precomp)
     for (int l = 0; l <= lmax; l++) {
         for (int m = 0; m <= l; m++) {
+            // printf("[modelComputeCSlmPrecomp] computing C[%d,%d]\n", l, m);
             computeCSPair(l, m, data, precomp, C_lm, S_lm);
         }
     }
