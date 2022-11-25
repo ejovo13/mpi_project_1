@@ -6,7 +6,7 @@ model_ejovo
 reduce
 validate
 .vscode
-*.txt
+# *.txt
 !**CMakeLists.txt
 *.csv
 *.png
