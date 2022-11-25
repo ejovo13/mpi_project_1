@@ -41,6 +41,10 @@ typedef struct {
     bool predict;
     bool diff;
     bool recompute;
+    bool print_args;
+
+    const char *plm_bin;
+    const char *coeff_file_bin;
 
 } args_t;
 

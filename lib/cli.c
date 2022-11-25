@@ -16,6 +16,7 @@ args_t *new_args(int argc, char **argv) {
     arg->predict = false;
     arg->diff = false;
     arg->recompute = false;
+    arg->print_args = false;
 
     return arg;
 }
@@ -34,21 +35,24 @@ void usage(char ** argv)
     printf("[--diff]                        predict the altitude values (f_hat) and compute\n");
     printf("[--recompute]                   compute the model coefficients no matter what files\n");
     printf("                                are present\n");
+    printf("[--args]                        print the args_t object storing this runs arguments\n");
     printf("\n");
     exit(0);
 }
 
 void print_args(const args_t *args) {
     printf("args = {\n");
-    printf("  .size_dataset\t = %s\n", args->size_dataset);
-    printf("  .lmodel\t = %d\n", args->lmodel);
-    printf("  .lbin\t\t = %d\n", args->lmodel);
-    printf("  .from\t\t = %s\n", btos(args->from));
-    printf("  .a\t\t = %d\n", args->a);
-    printf("  .txt\t\t = %s\n", btos(args->txt));
-    printf("  .predict\t = %s\n", btos(args->predict));
-    printf("  .diff\t\t = %s\n", btos(args->diff));
-    printf("  .recompute\t = %s\n", btos(args->recompute));
+    printf("  .size_dataset\t  = %s\n", args->size_dataset);
+    printf("  .lmodel\t  = %d\n", args->lmodel);
+    printf("  .lbin\t\t  = %d\n", args->lmodel);
+    printf("  .from\t\t  = %s\n", btos(args->from));
+    printf("  .a\t\t  = %d\n", args->a);
+    printf("  .txt\t\t  = %s\n", btos(args->txt));
+    printf("  .predict\t  = %s\n", btos(args->predict));
+    printf("  .diff\t\t  = %s\n", btos(args->diff));
+    printf("  .recompute\t  = %s\n", btos(args->recompute));
+    printf("  .plm_bin\t  = %s\n", args->plm_bin);
+    printf("  .coeff_file_bin = %s\n", args->coeff_file_bin);
     printf("}\n");
 
 }
@@ -67,6 +71,7 @@ args_t *process_command_line_options(int argc, char ** argv, bool __log)
         {"diff", no_argument, NULL, 'd'},
         {"from", required_argument, NULL, 'f'},
         {"recompute", no_argument, NULL, 'r'},
+        {"args", no_argument, NULL, 'a'},
         {NULL, 0, NULL, 0}
     };
 
@@ -116,6 +121,9 @@ args_t *process_command_line_options(int argc, char ** argv, bool __log)
         case 'r':
             args->recompute = true;
         break;
+        case 'a':
+            args->print_args = true;
+        break;
         default:
             errx(1, "Unknown option\n");
         }
@@ -124,6 +132,16 @@ args_t *process_command_line_options(int argc, char ** argv, bool __log)
     /* missing required args? */
     if (args->size_dataset == NULL || args->data == NULL || args->lbin < 0 || args->lmodel < 0)
         usage(argv);
+
+
+    char *plm_bin = calloc(100, sizeof(*plm_bin));
+    char *coeff_file_bin = calloc(100, sizeof(*coeff_file_bin));
+
+    sprintf(coeff_file_bin, "sph_%s_%d.bin", args->size_dataset, args->lmodel);
+    sprintf(plm_bin, "ETOPO1_%s_P%d.bin", args->size_dataset, args->lbin);
+    args->plm_bin = plm_bin;
+    args->coeff_file_bin = coeff_file_bin;
+
 
     return args;
 }

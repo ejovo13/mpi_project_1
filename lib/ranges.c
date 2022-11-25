@@ -144,7 +144,7 @@ range *modelComputeRange(int a, int b, const data_iso *data, const Precomp *prec
     Matrix_d *C_lm = r->C_lm, *S_lm = r->S_lm;
     // Matrix_d *P_lm_th = precomp->Plm_th;
 
-    printf("[modelComputeCSlm] Computing coefficien range [%d, %d] in serial\n", a, b);
+    printf("[modelComputeRange] Computing coefficient range [%d, %d] in serial\n", a, b);
 
     Clock *clock = Clock_new();
     Clock_tic(clock);
@@ -165,6 +165,128 @@ range *modelComputeRange(int a, int b, const data_iso *data, const Precomp *prec
             i++;
         }
     }
+
+    Clock_toc(clock);
+    double time = elapsed_time(clock);
+    free(clock);
+
+    // printf("[modelComputeRange] took %lf s\n", time);
+
+    return r;
+
+}
+
+// Compute the range[a, b] of C and L coefficients
+range *modelComputeRangeMPI(int a, int b, const data_iso *data, const Precomp *precomp, int world_size, int this_rank) {
+
+    range *r = newRange(a, b, NULL, NULL); // Coefficients initialized as zeros(1, ((b + 1)(b + 2) - a(a + 1)) / 2)
+
+    // We want to iterate starting at a and ending at b
+
+    Matrix_d *C_lm = r->C_lm, *S_lm = r->S_lm;
+    // Matrix_d *P_lm_th = precomp->Plm_th;
+
+    if (this_rank == 0) 
+        printf("[modelComputeRangeMPI] Computing coefficient range [%d, %d] with %d threads\n", a, b, world_size);
+
+    Clock *clock = Clock_new();
+    Clock_tic(clock);
+
+    cs_pair cs;
+
+    // A single iteration of this loop can be abstracted away as:
+    // computeCSPair(l, m, P_lm_th, precomp)
+
+    for (int l = a, i = 0; l <= b; l++) {
+        for (int m = 0; m <= l; m++) {
+            
+            // printf("Computing [%d]th coefficient\n", i);
+
+            cs = computeCSPairAlt(l, m, data, precomp);
+            vecset_d(r->C_lm, i, cs.c);
+            vecset_d(r->S_lm, i, cs.s);
+            i++;
+        }
+    }
+
+    // Total work is the cardinality of my range
+    int total_workload = r->card;
+
+    // Only the ROOT RANK will actually fill the spherical model
+    // Every other rank will, however, compute their own stretch of 
+
+    Clock *clock = Clock_new();
+    Clock_tic(clock);
+
+    // Go ahead and compute the workload needed by this rank
+    int this_workload = compute_workload(total_workload, world_size, this_rank);
+
+
+    Matrix_i *start_end = compute_startend_array(total_workload, world_size);
+
+    int i_start = vecat_i(start_end, this_rank) + 1;
+    int i_end = vecat_i(start_end, this_rank + 1);
+
+    // Allocate the space for Clm and Slm matrices
+    Matrix_d *Clm = Matrix_new_d(1, this_workload);
+    Matrix_d *Slm = Matrix_new_d(1, this_workload);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    // Here we need to assert the validity of data and precomp
+    assert(data != NULL);
+    assert(precomp != NULL);
+    assert(Clm != NULL);
+    assert(Slm != NULL);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    int range_start = r->a * (r->a + 1) / 2;
+
+    for (int i = i_start; i <= i_end; i++) {
+        lm_pair pair = i_to_lm(i + range_start);
+        cs_pair cs = computeCSPairAlt(pair.l, pair.m, data, precomp);
+        // computeCSPairMPI(pair.l, pair.m, data, precomp, Clm, Slm, i_start);
+    }
+
+
+    Matrix_i *recvcounts = compute_workload_array(total_workload, world_size);
+    Matrix_i *displacements = compute_displacements(total_workload, world_size);
+
+    // C coefficients
+    MPI_Gatherv(Clm->data, 
+        this_workload, 
+        MPI_DOUBLE, 
+        model->C_lm->data, 
+        recvcounts->data, 
+        displacements->data, 
+        MPI_DOUBLE, 
+        0, 
+        MPI_COMM_WORLD);
+
+    // S coefficients
+    MPI_Gatherv(Slm->data, 
+        this_workload, 
+        MPI_DOUBLE, 
+        model->S_lm->data, 
+        recvcounts->data, 
+        displacements->data, 
+        MPI_DOUBLE, 
+        0, 
+        MPI_COMM_WORLD);
+
+    Clock_toc(clock);
+    
+    double runtime = elapsed_time(clock);
+
+    Matrix_free_i(recvcounts);
+    Matrix_free_i(displacements);
+    Matrix_free_d(Clm);
+    Matrix_free_d(Slm);
+    Matrix_free_i(start_end);
+    free(clock);
+
+    // return runtime;
 
     Clock_toc(clock);
     double time = elapsed_time(clock);

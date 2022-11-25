@@ -21,26 +21,43 @@ add_geodesy(new_model_mpi)
 # add_geodesy(new_model_omp2)
 add_geodesy(parallel_speedup)
 
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/build_small_models.sh
+macro(move_file FILE) 
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/${FILE}
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+endmacro()
+
+move_file(build_small_models.sh)
+move_file(build_med_models.sh)
+move_file(build_hi_models.sh)
+move_file(build_old_small.sh)
+move_file(validate_old_small.sh)
+move_file(benchmark_mpi.sh)
+move_file(run_mpi.sh)
+move_file(world_ascii.txt)
+
+# file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/build_small_models.sh
+#      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
     
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/build_med_models.sh
-     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+# file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/build_med_models.sh
+#      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/build_hi_models.sh
-     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+# file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/build_hi_models.sh
+#      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/build_old_small.sh
-     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+# file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/build_old_small.sh
+#      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/validate_old_small.sh
-     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+# file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/validate_old_small.sh
+#      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/benchmark_mpi.sh
-     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+# file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/benchmark_mpi.sh
+#      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/run_mpi.sh
-     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+# file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/run_mpi.sh
+#      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
+# file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/run_mpi.sh
+#      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 # add_executable(mejovo model_ejovo.c)
 # add_executable(old_model old_model.c)
 # add_executable(validate validate.c)

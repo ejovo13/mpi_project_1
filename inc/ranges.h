@@ -69,6 +69,8 @@ void printRangeCoeff(const range *r);
 
 range *modelComputeRange(int a, int b, const data_iso *data, const Precomp *precomp);
 
+range *modelComputeRangeMPI(int a, int b, const data_iso *data, const Precomp *precomp, int world_size, int this_rank);
+
 // Add a range to a spherical model, returning a new model
 SphericalModel *SphericalModelAddRange(const SphericalModel *model, const range *r);
 
