@@ -17,3 +17,12 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/run_proc.sh
 
 file(COPY ${CMAKE_SOURCE_DIR}/bin/models/sph_med_500.bin
     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
+file(COPY ${CMAKE_SOURCE_DIR}/bin/models/sph_small_100.bin
+    DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
+file(COPY ${CMAKE_SOURCE_DIR}/bin/models/sph_small_200.bin
+    DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
+file(COPY ${CMAKE_SOURCE_DIR}/bin/models/sph_small_300.bin
+    DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
