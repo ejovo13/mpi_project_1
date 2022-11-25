@@ -206,8 +206,8 @@ void test_model_add_range() {
     const int lbin = 300;
 
     data_iso *data = get_data_small(true);
-    SphericalModel *model_low =  loadSphericalModel("sph_small_100.bin", 100);
 
+    SphericalModel *model_low =  loadSphericalModel("sph_small_100.bin", 100);
     SphericalModel *model_hi  = loadSphericalModel("sph_small_200.bin", 200);
 
     //  
@@ -215,6 +215,9 @@ void test_model_add_range() {
 
     // SphericalModel *model_add = 
     // SphericalModel *model_add = SphericalModelAddRange(model_low, ra);
+
+    Model_head(model_low);
+    Model_head(model_hi);
 
     // Let's start by just checking the addition of the ranges
     range *ra = SphericalModelExtractRange(model_low, 0, 100);

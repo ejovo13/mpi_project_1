@@ -91,6 +91,13 @@ static inline lm_pair i_to_lm(int i) {
     return pair;
 }
 
+// Print basic info about the model then print the first n coeff
+static inline void Model_head(const SphericalModel *model) {
+   printf("Model of degree %d\n", model->lmax);
+   Vector_print_head_d(model->C_lm, 10); 
+   Vector_print_head_d(model->S_lm, 10); 
+}
+
 spherical_model *copy_spherical_model(const spherical_model *rhs);
 
 iso_model *copy_iso (const iso_model *rhs);
