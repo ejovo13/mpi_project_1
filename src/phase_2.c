@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
 
     // Matrix_print_d(precomp->Plm_th);
 
-    SphericalModel *model = newSphericalModel(lmodel, data, precomp);
+    SphericalModel *model = newSphericalModel(lmodel);
     double time = modelComputeCSlmPrecomp(model, data, precomp);
 
     SphericalModelToTXT(model, "med");

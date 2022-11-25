@@ -37,6 +37,7 @@ typedef struct data_iso {
     double dp;
     // Matrix_i *l_indices; // Store linear indices of l and m
     // Matrix_i *m_indices;
+    const char *size_dataset;
 } data_iso;
 
 /*

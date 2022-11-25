@@ -136,7 +136,7 @@ void t_comp_small(int l_model) {
     if (test_open == NULL) {
 
         printf("%s not found, computing Clm and Slm coefficients\n", coeff_file_bin);
-        model = newSphericalModel(LF, data_small, precomp);    
+        model = newSphericalModel(LF);    
         double time = modelComputeCSlmPrecomp(model, data_small, precomp);
         printf("Computed coefficients for L = %d in %lfs\n", LF, time);
         SphericalModelToBIN(model, "small");

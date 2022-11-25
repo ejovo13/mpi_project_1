@@ -4,16 +4,22 @@
 void test_overlapping(const SphericalModel *model);
 void test_disjoint(const SphericalModel *model);
 void test_range(const SphericalModel *model);
+void test_compute_ranges(const SphericalModel *model, const data_iso *data);
+void test_model_add_range();
+void test_model_alt(); // test if the alt way of computing coefficients returns the same model
 
 int main() {
 
     // Build a new model
     SphericalModel *model = loadSphericalModel("sph_med_500.bin", 500);
+    data_iso *data = get_data_med(false);
     
     // And create a range object
     test_range(model);
     test_disjoint(model);
     test_overlapping(model);
+    // test_compute_ranges(model, data);
+    test_model_add_range();
 
     return 0;
 }
@@ -99,7 +105,7 @@ void test_disjoint(const SphericalModel *model) {
 }
 void test_range(const SphericalModel *model) {
 
-        range *r = as_range(model);
+    range *r = as_range(model);
 
     assert(Matrix_size_d(r->C_lm) == r->card / 2);
     assert(Matrix_size_d(r->S_lm) == r->card / 2);
@@ -146,4 +152,89 @@ void test_range(const SphericalModel *model) {
     Matrix_print_d(r0_4->S_lm);
 
     assert(ranges_equal(r0_4, r0_4_add));
+}
+
+void test_compute_ranges(const SphericalModel *model, const data_iso *data) {
+
+    const int lbin = 300;
+    const int lmodel = 100;
+
+    data = get_data_small(true);
+    model = loadSphericalModel("sph_small_300.bin", lbin);
+
+    /**========================================================================
+     *!                           Test for small a and b
+     *========================================================================**/
+    int a = 0;
+    int b = 3;
+
+    // Let's try and compute a new range and compare it with an established model
+    // Precomp *precomp = newPrecomp(0, lmodel, lbin, data, "p400.bin");
+    Precomp *precomp = newPrecomp(0, lmodel, lbin, data, "p_small_300.bin");
+
+    // Now let's compute a range
+
+    range *r = modelComputeRange(a, b, data, precomp);
+    range *r0 = SphericalModelExtractRange(model, a, b);
+
+    printRange(r);
+    printRangeCoeff(r);
+    printRangeCoeff(r0);
+
+
+    assert(ranges_equal(r, SphericalModelExtractRange(model, a, b)));
+
+    /**========================================================================
+     *!                           Test for [a, b] + [b, c] == [a,c]
+     *========================================================================**/
+    range *rlow = modelComputeRange(0, 20, data, precomp);
+    range *rhi  = modelComputeRange(21, 40, data, precomp);
+
+    range *r_add = ranges_union(rlow, rhi);
+
+    assert(ranges_equal(r_add, SphericalModelExtractRange(model, 0, 40)));
+
+    rlow = modelComputeRange(14, 58, data, precomp);
+    rhi  = modelComputeRange(34, 127, data, precomp);
+
+    assert(ranges_equal(ranges_union(rlow, rhi), SphericalModelExtractRange(model, 14, 127)));
+}
+
+// Add Model_100 to a range[101, 200] to create a new Model_200
+void test_model_add_range() {
+
+    const int lbin = 300;
+
+    data_iso *data = get_data_small(true);
+    SphericalModel *model_low =  loadSphericalModel("sph_small_100.bin", 100);
+
+    SphericalModel *model_hi  = loadSphericalModel("sph_small_200.bin", 200);
+
+    //  
+    // range *ra = SphericalModelExtractRange(model_low, 101, 200);
+
+    // SphericalModel *model_add = 
+    // SphericalModel *model_add = SphericalModelAddRange(model_low, ra);
+
+    // Let's start by just checking the addition of the ranges
+    range *ra = SphericalModelExtractRange(model_low, 0, 100);
+    range *rb = SphericalModelExtractRange(model_hi, 101, 200);
+
+    range *rfull = SphericalModelToRange(model_hi);
+    range *rab   = ranges_union(ra, rb);
+
+    assert(ranges_equal(rab, rfull));
+
+    assert(models_equal(model_hi, SphericalModelAddRange(model_low, rb)));
+
+    printf("[test_model_add_range] assertions passed\n");
+
+}
+
+void test_model_alt() {
+
+    data_iso *data = get_data_small(false);
+    // SphericalModel *model = buildSphericalModel()
+
+
 }

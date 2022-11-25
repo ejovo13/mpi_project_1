@@ -67,7 +67,7 @@ Matrix_d *time_model(int lmax) {
     data_iso *data = get_data_small(true);
     // Precomputation data has already been computed for us
     Precomp *precomp = newPrecomp(0, lmax, SUP_LMAX, data, plm_bin);
-    SphericalModel *model = newSphericalModel(lmax, data, precomp);
+    SphericalModel *model = newSphericalModel(lmax);
 
 
     // Time average execution for different threads
