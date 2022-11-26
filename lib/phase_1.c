@@ -163,6 +163,8 @@ void freePrecomp(Precomp *precomp) {
     if (precomp->sinmph) Matrix_free_d(precomp->sinmph);
     if (precomp->sinmph) Matrix_free_d(precomp->cosmph);
 
+    free(precomp);
+
 }
 
 /**========================================================================
@@ -261,6 +263,7 @@ SphericalModel *buildSphericalModel(const data_iso *data, int lmodel, const char
     }
 
     freePrecomp(precomp);
+    free(clock);    
 
     return model;
 
@@ -302,6 +305,7 @@ SphericalModel *buildSphericalModelMPI(const data_iso *data, int lmodel, int lbi
 
         range *r;
 
+        // This section computes the model and stores it in model for the root rank
         if (from) {
 
             sprintf(from_a_bin, "sph_%s_%d.bin", data->size_dataset, a);
@@ -317,12 +321,30 @@ SphericalModel *buildSphericalModelMPI(const data_iso *data, int lmodel, int lbi
             )
             
             Clock_tic(clock);
+
+            // r is only legit in the ROOT PROCESS
             r = modelComputeRangeMPI(a, lmodel, data, precomp, world_size, this_rank);
             Clock_toc(clock);
-            model = SphericalModelAddRange(model, r);
+
+            if (this_rank == 0) {
+                assert(r);
+                model = SphericalModelAddRange(model, r);
+            }
+
             time = elapsed_time(clock);
 
-            freeRange(r);
+            // // Now save the model so that the other processes can access it.
+            // if (this_rank == 0) {
+            //     SphericalModelToBIN(model, coeff_file_bin);
+            // }
+
+            // MPI_Barrier(MPI_COMM_WORLD);
+
+            // if (this_rank != 0) {
+            //     model = loadSphericalModel(coeff_file_bin, lmodel);
+            // }
+
+            // freeRange(r);
             // printRange(r);
         } else {
             // Recompute all of the coefficients
@@ -349,6 +371,8 @@ SphericalModel *buildSphericalModelMPI(const data_iso *data, int lmodel, int lbi
         if (this_rank != 0) {
             model = loadSphericalModel(coeff_file_bin, lmodel);
         }
+
+        if (this_rank == 0) printf("All models loaded\n");
 
     } else {
 
@@ -758,5 +782,7 @@ void freeSphericalModel(SphericalModel *model) {
 
     if (model->C_lm) Matrix_free_d(model->C_lm);
     if (model->S_lm) Matrix_free_d(model->S_lm);
+
+    free(model);
 
 }

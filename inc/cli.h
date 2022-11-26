@@ -67,6 +67,8 @@ static inline void freeArgs(args_t *args) {
     if (args->data) free_data_iso(args->data);
     if (args->plm_bin) free(args->plm_bin);
 
+    free(args);
+
 }
 
 void print_args(const args_t *args);

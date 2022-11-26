@@ -159,6 +159,9 @@ args_t *process_command_line_options(int argc, char ** argv, bool __log, int ran
         if (rank == 0) {
             usage(argv);
         }
+
+        free_data_iso(args->data);
+
         MPI_Finalize();
         exit(0);
     }

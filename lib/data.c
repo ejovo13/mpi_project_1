@@ -245,6 +245,8 @@ void free_data_iso(data_iso *data) {
     if (data->r != NULL) 
         free(data->r);
 
+    free(data);
+
     // if 
 
     // if (data->l_indices != NULL)
