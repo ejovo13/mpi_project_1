@@ -88,12 +88,8 @@ Matrix_f *compute_prediction_mpi(const SphericalModel *model, const Precomp *pre
     assert(data);
     assert(data->th);
 
-    for (int i = start, count = 0; i < end; i++, count++) {
+    for (int i = start, count = 0; i <= end; i++, count++) {
         *vecacc_f(this_f_hat, count) = compute_prediction_point(model, precomp, data, i);
-        // *vecacc_f(this_f_hat, count) = 1;
-        if (this_rank == 0) {
-            // printf("i: %d, counts %d\n", i, count);
-        }
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
