@@ -137,6 +137,7 @@ range *as_range(const SphericalModel *model) {
 // Compute the range[a, b] of C and L coefficients
 range *modelComputeRange(int a, int b, const data_iso *data, const Precomp *precomp) {
 
+    // if (this_rank == 0)
     range *r = newRange(a, b, NULL, NULL); // Coefficients initialized as zeros(1, ((b + 1)(b + 2) - a(a + 1)) / 2)
 
     // We want to iterate starting at a and ending at b
@@ -179,7 +180,13 @@ range *modelComputeRange(int a, int b, const data_iso *data, const Precomp *prec
 // Compute the range[a, b] of C and S coefficients
 range *modelComputeRangeMPI(int a, int b, const data_iso *data, const Precomp *precomp, int world_size, int this_rank) {
 
-    range *r = newRange(a, b, NULL, NULL); // Coefficients initialized as zeros(1, ((b + 1)(b + 2) - a(a + 1)) / 2)
+    // range *r = newRange(1, 2, NULL, NULL);
+    range *r = newRange(a, b, NULL, NULL);
+
+    // if (this_rank == 0) {
+        // freeRange(r);
+        // r = newRange(a, b, NULL, NULL); // Coefficients initialized as zeros(1, ((b + 1)(b + 2) - a(a + 1)) / 2)
+    // }
 
     // We want to iterate starting at a and ending at b
 
@@ -194,23 +201,8 @@ range *modelComputeRangeMPI(int a, int b, const data_iso *data, const Precomp *p
 
     cs_pair cs;
 
-    // A single iteration of this loop can be abstracted away as:
-    // computeCSPair(l, m, P_lm_th, precomp)
-
-    for (int l = a, i = 0; l <= b; l++) {
-        for (int m = 0; m <= l; m++) {
-            
-            // printf("Computing [%d]th coefficient\n", i);
-
-            cs = computeCSPairAlt(l, m, data, precomp);
-            vecset_d(r->C_lm, i, cs.c);
-            vecset_d(r->S_lm, i, cs.s);
-            i++;
-        }
-    }
-
     // Total work is the cardinality of my range
-    int total_workload = r->card;
+    int total_workload = r->card / 2;
 
     // Go ahead and compute the workload needed by this rank
     int this_workload = compute_workload(total_workload, world_size, this_rank);
@@ -245,12 +237,23 @@ range *modelComputeRangeMPI(int a, int b, const data_iso *data, const Precomp *p
         vecset_d(Slm, count, cs.s);
     }
 
-    MPI_ORDERED( 
-        printf("[%d] computed %lu coefficients\n", this_rank, Matrix_size_d(Clm) * 2);
-    )
+    // MPI_ORDERED( 
+    //     printf("[%d] workload: %d, total_work: %d\n", this_rank, this_workload, total_workload);
+    //     printf("[%d] computed %lu coefficients in [%d, %d] with i \\in [%d, %d]\n", this_rank, Matrix_size_d(Clm) * 2, r->a, r->b, i_start, i_end);
+    // )
+
+    // Vector_print_head_d(Clm, 20);
+    // Vector_print_head_d(Slm, 20);
 
     Matrix_i *recvcounts = compute_workload_array(total_workload, world_size);
     Matrix_i *displacements = compute_displacements(total_workload, world_size);
+
+    // if (this_rank == 0) {
+    //     Matrix_print_i(recvcounts);
+    //     Matrix_print_i(displacements);
+    // }
+
+    MPI_Barrier(MPI_COMM_WORLD);
 
     // C coefficients
     MPI_Gatherv(Clm->data, 
@@ -274,17 +277,33 @@ range *modelComputeRangeMPI(int a, int b, const data_iso *data, const Precomp *p
         0, 
         MPI_COMM_WORLD);
 
-    Clock_toc(clock);
+    // if (this_rank == 0) {
+    //     printf("===== Root received Slm->data and Clm->data =====\n");
+    // }
+
+    // if (this_rank == 0) {
+
+    //     Matrix_print_d(r->C_lm);
+    //     Matrix_print_d(r->S_lm);
+    // }
+
+    // Clock_toc(clock);
     // double time = elapsed_time(clock);
-    free(clock);
+    // free(clock);
     
-    Matrix_free_i(recvcounts);
-    Matrix_free_i(displacements);
+    // Matrix_free_i(recvcounts);
+    // Matrix_free_i(displacements);
     // Matrix_free_d(Clm);
     // Matrix_free_d(Slm);
-    Matrix_free_i(start_end);
+    // Matrix_free_i(start_end);
     // free(clock);
 
+    if (this_rank == 0) {
+        return r;
+    } else {
+        freeRange(r);
+        return NULL;
+    }
 
     return r;
 
@@ -306,6 +325,7 @@ SphericalModel *SphericalModelAddRange(const SphericalModel *model, const range 
     r_union->S_lm = NULL; // don't manage memory of matrices anymore
 
     freeRange(r_model);
+    freeRange(r_union);
 
     return new_model;
 

@@ -278,7 +278,7 @@ SphericalModel *buildSphericalModelMPI(const data_iso *data, int lmodel, int lbi
 
     // Precomp *precomp
 
-    Precomp *precomp = NULL;
+    Precomp *precomp;
 
     MPI_ORDERED(
         precomp = newPrecomp(0, lmodel, lbin, data, plm_bin);
@@ -344,7 +344,9 @@ SphericalModel *buildSphericalModelMPI(const data_iso *data, int lmodel, int lbi
             //     model = loadSphericalModel(coeff_file_bin, lmodel);
             // }
 
-            // freeRange(r);
+            if (this_rank == 0) {
+                freeRange(r);
+            }
             // printRange(r);
         } else {
             // Recompute all of the coefficients
@@ -771,6 +773,8 @@ SphericalModel *loadSphericalModel(const char *bin_in, int lmax) {
 
     fread(model->C_lm->data, n_bytes, 1, bin);
     fread(model->S_lm->data, n_bytes, 1, bin);
+
+    fclose(bin);
 
     return model;
 }

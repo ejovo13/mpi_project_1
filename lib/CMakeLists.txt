@@ -17,7 +17,7 @@ add_library(
 
 target_link_libraries(
     geodesy
-    asan
+    # asan
     ejovo 
     m 
     OpenMP::OpenMP_C 

@@ -24,7 +24,10 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &this_rank);
 
+    MPI_Barrier(MPI_COMM_WORLD);
+
     bool __log = false;
+
 
     if (this_rank == 0) {
         printf("Running mpi version with %d processes\n", world_size);
@@ -34,6 +37,13 @@ int main(int argc, char **argv) {
     args_t *args = process_command_line_options(argc, argv, __log, this_rank);
     args->rank = this_rank;
     args->world_size = world_size;
+
+    if (args->ascii) {
+        if (this_rank == 0) {
+            system("cat world_ascii.txt");
+            printf("\n");
+        }
+    }
 
     if (args->help) {
         if (this_rank == 0) 
@@ -66,6 +76,9 @@ int main(int argc, char **argv) {
 
     SphericalModel *model = build_model_mpi(args, world_size, this_rank);
 
+    assert(model);
+    assert(args->data);
+
     if (this_rank == 0) printf("[main] MPI model built\n");
 
     // output the model to a text file
@@ -80,6 +93,13 @@ int main(int argc, char **argv) {
         predict_stuff_mpi(args, model, precomp);
         freePrecomp(precomp);
     }
+
+    if (this_rank == 0) {
+        printf("Reached finalize\n");
+    }
+
+    freeSphericalModel(model);
+    freeArgs(args);
 
     MPI_Finalize();
     return 0;
