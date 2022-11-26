@@ -254,6 +254,7 @@ SphericalModel *buildSphericalModel(const data_iso *data, int lmodel, const char
     } else {
 
         // Model file coeff_file_bin already exists, so load from it
+        printf("[buildSphericalModel] Coefficients already present in %s, loading them now\n", coeff_file_bin);
         fclose(test_open);
         model = loadSphericalModel(coeff_file_bin, lmodel);
 
@@ -371,10 +372,7 @@ SphericalModel *buildSphericalModelMPI(const data_iso *data, int lmodel, int lbi
 double modelComputeCSlmPrecompAlt(SphericalModel *model, const data_iso *data, const Precomp *precomp) {
 
     const int lmax = model->lmax;
-    const int ll = model->ll;
-
-    Matrix_d *C_lm = model->C_lm, *S_lm = model->S_lm;
-    Matrix_d *P_lm_th = precomp->Plm_th;
+    // const int ll = model->ll;
 
     printf("[modelComputeCSlmPrecompAlt] Computing coefficients in serial\n");
 
@@ -403,10 +401,10 @@ double modelComputeCSlmPrecompAlt(SphericalModel *model, const data_iso *data, c
 double modelComputeCSlmPrecomp(SphericalModel *model, const data_iso *data, const Precomp *precomp) {
 
     const int lmax = model->lmax;
-    const int ll = model->ll;
+    // const int ll = model->ll;
 
     Matrix_d *C_lm = model->C_lm, *S_lm = model->S_lm;
-    Matrix_d *P_lm_th = precomp->Plm_th;
+    // Matrix_d *P_lm_th = precomp->Plm_th;
 
     printf("[modelComputeCSlmPrecomp] Computing coefficients in serial\n");
 
@@ -435,7 +433,7 @@ double modelComputeCSlmPrecomp(SphericalModel *model, const data_iso *data, cons
 double modelComputeCSlmPrecompOMP(SphericalModel *model, const data_iso *data, const Precomp *precomp) {
 
     const int lmax = model->lmax;
-    const int ll = model->ll;
+    // const int ll = model->ll;
 
     Matrix_d *C_lm = model->C_lm, *S_lm = model->S_lm;
     Matrix_d *P_lm_th = precomp->Plm_th;
@@ -470,11 +468,11 @@ double modelComputeCSlmPrecompOMP(SphericalModel *model, const data_iso *data, c
 
 double modelComputeCSlmPrecompOMP2(SphericalModel *model, const data_iso *data, const Precomp *precomp) {
 
-    const int lmax = model->lmax;
+    // const int lmax = model->lmax;
     const int ll = model->ll;
 
     Matrix_d *C_lm = model->C_lm, *S_lm = model->S_lm;
-    Matrix_d *P_lm_th = precomp->Plm_th;
+    // Matrix_d *P_lm_th = precomp->Plm_th;
 
     printf("[modelComputeCSlm] Computing coefficients in parallel\n");
 
@@ -502,11 +500,11 @@ double modelComputeCSlmPrecompOMP2(SphericalModel *model, const data_iso *data, 
 
 double modelComputeCSlmPrecompOMP2Threads(SphericalModel *model, const data_iso *data, const Precomp *precomp, int nthreads) {
 
-    const int lmax = model->lmax;
+    // const int lmax = model->lmax;
     const int ll = model->ll;
 
     Matrix_d *C_lm = model->C_lm, *S_lm = model->S_lm;
-    Matrix_d *P_lm_th = precomp->Plm_th;
+    // Matrix_d *P_lm_th = precomp->Plm_th;
 
     printf("[modelComputeCSlm] Computing coefficients in parallel\n");
     omp_set_num_threads(nthreads);
@@ -537,7 +535,7 @@ double modelComputeCSlmPrecompOMP2Threads(SphericalModel *model, const data_iso 
 double modelComputeCSlmPrecompMPI(SphericalModel *model, const data_iso *data, const Precomp *precomp, int world_size, int this_rank) {
 
     // Total work is LL
-    const int lmax = model->lmax;
+    // const int lmax = model->lmax;
     const int ll = model->ll;
 
     // Only the ROOT RANK will actually fill the spherical model

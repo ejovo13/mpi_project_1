@@ -37,4 +37,6 @@ Matrix_f *load_prediction(const char *binary_in, int N);
 
 void predict_stuff(const args_t *args, const SphericalModel *model, const Precomp *precomp);
 
+void predict_stuff_mpi(const args_t *args, const SphericalModel *model, const Precomp *precomp);
+
 #endif // GEODESY_PHASE_3

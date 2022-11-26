@@ -8,8 +8,15 @@ find_package(MPI REQUIRED)
 
 add_compile_options(
     -Werror
+    $<$<CONFIG:Build>:-O>
     $<$<CONFIG:Debug>:-g>
+    $<$<CONFIG:Debug>:-Wall>
+    $<$<CONFIG:Debug>:-Wno-unknown-pragmas>
 )
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message("Debug build")
+endif()
 
 if(CMAKE_COMPILER_IS_GNUCC) 
     message("Using gcc, adding -fopenmp")

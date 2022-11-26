@@ -195,7 +195,7 @@ iso_model *newModelTimed(data_iso *data, int lmax, double *time_taken) {
 
 void writeModel(const spherical_model *model, const data_iso *data, const char *prefix) {
 
-    const int ll = model->ll;
+    // const int ll = model->ll;
 
     char fileout[100] = {0};
 
@@ -220,7 +220,7 @@ void writeModel(const spherical_model *model, const data_iso *data, const char *
 // m != 0
 void writeModifiedModel(const spherical_model *model, const data_iso *data, const char *prefix) {
 
-    const int ll = model->ll;
+    // const int ll = model->ll;
 
     char fileout[100] = {0};
 
@@ -246,7 +246,7 @@ void modelComputePlm(iso_model *iso, const data_iso *data) {
 
     spherical_model *model = iso->model;
 
-    const int ll = model->ll;
+    // const int ll = model->ll;
     Matrix_d *P_lm_th = Matrix_new_d(model->P_lm_th->nrows, model->P_lm_th->ncols);
     Matrix_free_d(model->P_lm_th);
     model->P_lm_th = P_lm_th;
@@ -279,10 +279,10 @@ void modelComputePlm(iso_model *iso, const data_iso *data) {
 double modelComputeCSlm(spherical_model *model, const data_iso *data) {
 
     const int lmax = model->lmax;
-    const int ll = model->ll;
+    // const int ll = model->ll;
 
     Matrix_d *C_lm = model->C_lm, *S_lm = model->S_lm;
-    Matrix_d *P_lm = model->P_lm_th;
+    // Matrix_d *P_lm = model->P_lm_th;
 
     printf("[ modelComputeCSlm ] :\n");
     // Matrix_print_d(P_lm);
@@ -522,10 +522,10 @@ Matrix_d *compute_mse_coeff(const data_iso *data, const spherical_model *model) 
 
     // double *CS = (double *) malloc(sizeof(*CS) * 2 * ll * data->N); // start off using full sized array
     Matrix_d *cs_mat = Matrix_new_d(data->N * 2, ll);
-    double *C = cs_mat->data;
+    // double *C = cs_mat->data;
     // double *S = matacc_d(cs_mat, 1, 0); // halfway point
 
-    int index = 0;;
+    // int index = 0;;
     double cosmph = 0;
     double sinmph = 0;
     const int N = data->N;

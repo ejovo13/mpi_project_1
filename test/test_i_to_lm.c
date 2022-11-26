@@ -25,7 +25,7 @@ int main() {
         }
     }
 
-    Matrix_i *m_pair = Matrix_new_i(1, LL);
+    // Matrix_i *m_pair = Matrix_new_i(1, LL);
     // Now test to make sure the values are properly returned by i_to_lm
 
     for (int i = 0; i < LL; i++) {

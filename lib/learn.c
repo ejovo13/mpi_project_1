@@ -45,7 +45,7 @@ double modelPredictDataPoint(const iso_model *iso, int i) {
     int i_th = data_i_th(iso->data, i);
 
     double ph = vecat_d(iso->data->th, i_ph);
-    double th = vecat_d(iso->data->ph, i_th);
+    // double th = vecat_d(iso->data->ph, i_th);
 
     double sum = 0;
 
@@ -204,11 +204,11 @@ Matrix_d *compute_stochastic_gradient(const iso_model *iso, int n) {
 // Assume that a model object has been fully initialized
 double compute_mse(const iso_model *iso) {
 
-    const spherical_model *model = iso->model;
+    // const spherical_model *model = iso->model;
     const data_iso        *data  = iso->data;
 
 
-    const int ll = model->ll;
+    // const int ll = model->ll;
 
     double sum = 0;
 
@@ -234,7 +234,7 @@ double estimate_mse(const iso_model *iso, int n) {
     // printf("Sampling from indices: \n");
     // Matrix_print_i(indices);
 
-    const spherical_model *model = iso->model;
+    // const spherical_model *model = iso->model;
     const data_iso        *data  = iso->data;
 
     double sum = 0;
@@ -252,11 +252,11 @@ double estimate_mse(const iso_model *iso, int n) {
 
 double compute_average_error(const iso_model *iso) {
 
-    const spherical_model *model = iso->model;
+    // const spherical_model *model = iso->model;
     const data_iso        *data  = iso->data;
 
 
-    const int ll = (model->lmax + 1) * (model->lmax + 2) / 2;
+    // const int ll = (model->lmax + 1) * (model->lmax + 2) / 2;
 
     double sum = 0;
 
@@ -336,7 +336,7 @@ iso_trained *train_model(iso_model *iso, int nruns, double alpha_zero) {
             adjust_parameters(grad, iso->model, alpha);
         Clock_toc(clock);
 
-        double adjustment_time = elapsed_time(clock);
+        // double adjustment_time = elapsed_time(clock);
 
         // Record the updated changes
         for (size_t j = 0; j < iso->model->ll; j++) {
@@ -468,7 +468,7 @@ iso_trained *train_model_stochastic(iso_model *iso, int nruns, int __ndraws, dou
             adjust_parameters(grad_hat, iso->model, alpha);
         Clock_toc(clock);
 
-        double adjustment_time = elapsed_time(clock);
+        // double adjustment_time = elapsed_time(clock);
 
         // Record the updated changes
         for (size_t j = 0; j < iso->model->ll; j++) {

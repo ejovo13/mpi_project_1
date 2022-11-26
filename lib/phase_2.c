@@ -5,7 +5,7 @@
 // separate computation and binary file I/O
 void write_binary_cslm(int L, int lmax, const data_iso *data, const char *p_lm_th_binary) {
 
-    const int ll = (lmax + 1) * (lmax + 2) / 2;
+    // const int ll = (lmax + 1) * (lmax + 2) / 2;
 
     Matrix_d *C_L = Matrix_new_d(1, L + 1);
     Matrix_d *S_L = Matrix_new_d(1, L + 1);
@@ -191,7 +191,7 @@ data_iso *load_data_binary(const char *binary_file_in, int t, int p, bool __log)
 
     // shorthand aliases:
     Matrix_d *th = data->th, *ph = data->ph;
-    int16_t *r = data->r;
+    // int16_t *r = data->r;
 
 	if (th == NULL || ph == NULL)
 		err(1, "cannot allocate data points\n");

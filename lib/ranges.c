@@ -141,7 +141,7 @@ range *modelComputeRange(int a, int b, const data_iso *data, const Precomp *prec
 
     // We want to iterate starting at a and ending at b
 
-    Matrix_d *C_lm = r->C_lm, *S_lm = r->S_lm;
+    // Matrix_d *C_lm = r->C_lm, *S_lm = r->S_lm;
     // Matrix_d *P_lm_th = precomp->Plm_th;
 
     printf("[modelComputeRange] Computing coefficient range [%d, %d] in serial\n", a, b);
@@ -167,7 +167,7 @@ range *modelComputeRange(int a, int b, const data_iso *data, const Precomp *prec
     }
 
     Clock_toc(clock);
-    double time = elapsed_time(clock);
+    // double time = elapsed_time(clock);
     free(clock);
 
     // printf("[modelComputeRange] took %lf s\n", time);
@@ -183,7 +183,7 @@ range *modelComputeRangeMPI(int a, int b, const data_iso *data, const Precomp *p
 
     // We want to iterate starting at a and ending at b
 
-    Matrix_d *C_lm = r->C_lm, *S_lm = r->S_lm;
+    // Matrix_d *C_lm = r->C_lm, *S_lm = r->S_lm;
     // Matrix_d *P_lm_th = precomp->Plm_th;
 
     if (this_rank == 0) 
@@ -236,7 +236,7 @@ range *modelComputeRangeMPI(int a, int b, const data_iso *data, const Precomp *p
     MPI_Barrier(MPI_COMM_WORLD);
 
     int range_start = r->a * (r->a + 1) / 2;
-    int a_pos = PT(a, 0);
+    // int a_pos = PT(a, 0);
 
     for (int i = i_start, count = 0; i <= i_end; i++, count++) {
         lm_pair pair = i_to_lm(i + range_start);
@@ -244,6 +244,10 @@ range *modelComputeRangeMPI(int a, int b, const data_iso *data, const Precomp *p
         vecset_d(Clm, count, cs.c);
         vecset_d(Slm, count, cs.s);
     }
+
+    MPI_ORDERED( 
+        printf("[%d] computed %lu coefficients\n", this_rank, Matrix_size_d(Clm) * 2);
+    )
 
     Matrix_i *recvcounts = compute_workload_array(total_workload, world_size);
     Matrix_i *displacements = compute_displacements(total_workload, world_size);
@@ -271,15 +275,15 @@ range *modelComputeRangeMPI(int a, int b, const data_iso *data, const Precomp *p
         MPI_COMM_WORLD);
 
     Clock_toc(clock);
-    double time = elapsed_time(clock);
+    // double time = elapsed_time(clock);
     free(clock);
     
     Matrix_free_i(recvcounts);
     Matrix_free_i(displacements);
-    Matrix_free_d(Clm);
-    Matrix_free_d(Slm);
+    // Matrix_free_d(Clm);
+    // Matrix_free_d(Slm);
     Matrix_free_i(start_end);
-    free(clock);
+    // free(clock);
 
 
     return r;

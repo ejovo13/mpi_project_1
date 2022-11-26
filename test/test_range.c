@@ -12,7 +12,7 @@ int main() {
 
     // Build a new model
     SphericalModel *model = loadSphericalModel("sph_med_500.bin", 500);
-    data_iso *data = get_data_med(false);
+    // data_iso *data = get_data_med(false);
     
     // And create a range object
     test_range(model);
@@ -203,9 +203,9 @@ void test_compute_ranges(const SphericalModel *model, const data_iso *data) {
 // Add Model_100 to a range[101, 200] to create a new Model_200
 void test_model_add_range() {
 
-    const int lbin = 300;
+    // const int lbin = 300;
 
-    data_iso *data = get_data_small(true);
+    // data_iso *data = get_data_small(true);
 
     SphericalModel *model_low =  loadSphericalModel("sph_small_100.bin", 100);
     SphericalModel *model_hi  = loadSphericalModel("sph_small_200.bin", 200);
@@ -236,7 +236,7 @@ void test_model_add_range() {
 
 void test_model_alt() {
 
-    data_iso *data = get_data_small(false);
+    // data_iso *data = get_data_small(false);
     // SphericalModel *model = buildSphericalModel()
 
 

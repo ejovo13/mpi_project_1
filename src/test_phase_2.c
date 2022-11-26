@@ -15,6 +15,8 @@ int main() {
     const int t_u = 10800;
     const int p_u = t_u * 2;
 
+    printf("Ultra {lmax = %d, nt = %d, nu = %d\n", lmax_u, t_u, p_u);
+
     const int bin_lmax_s = 1000;
     const int t_s = 180;
     const int p_s = t_s * 2;
