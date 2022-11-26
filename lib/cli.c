@@ -20,6 +20,9 @@ args_t *new_args(int argc, char **argv) {
     arg->help = false;
     arg->ascii = true;
 
+    arg->rank = 0;
+    arg->world_size = 1;
+
     return arg;
 }
 
@@ -71,7 +74,7 @@ void print_args(const args_t *args) {
 
 }
 
-args_t *process_command_line_options(int argc, char ** argv, bool __log)
+args_t *process_command_line_options(int argc, char ** argv, bool __log, int rank)
 {
     struct option longopts[] = {
         {"lmodel", required_argument, NULL, 'l'},
@@ -153,7 +156,10 @@ args_t *process_command_line_options(int argc, char ** argv, bool __log)
 
     /* missing required args? */
     if (args->size_dataset == NULL || args->data == NULL || args->lbin < 0 || args->lmodel < 0) {
-        usage(argv);
+        if (rank == 0) {
+            usage(argv);
+        }
+        MPI_Finalize();
         exit(0);
     }
 

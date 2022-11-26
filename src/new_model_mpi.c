@@ -14,6 +14,8 @@
  *========================================================================**/
 // Arguments
 
+SphericalModel *build_model_mpi(const args_t *args, int world_size, int this_rank);
+
 int main(int argc, char **argv) {
 
     int this_rank, world_size;
@@ -29,12 +31,32 @@ int main(int argc, char **argv) {
         __log = true;
     }
 
-    args_t *args = process_command_line_options(argc, argv, __log);
+    args_t *args = process_command_line_options(argc, argv, __log, this_rank);
+    args->rank = this_rank;
+    args->world_size = world_size;
 
-    if (this_rank == 0) {
+    if (args->help) {
+        if (this_rank == 0) 
+            usage(argv);
+        MPI_Finalize();
+        exit(0);
+    }
+
+    if (this_rank == 0 && args->print_args) {
         print_args(args);
     }
 
+
+    MPI_ONCE(
+        if (args->from) {
+            assert(args->a != 0);
+            printf("Computing model with degree %d starting from %d\n", args->lmodel, args->a);
+        } else {
+            printf("==============================\n");
+            printf("Computing model of degree %d\n", args->lmodel);
+            printf("==============================\n");
+        }
+    )
 
     char plm_bin[100] = {0};
     char coeff_file_bin[100] = {0};
@@ -43,37 +65,9 @@ int main(int argc, char **argv) {
     sprintf(plm_bin, "ETOPO1_%s_P%d.bin", args->size_dataset, args->lbin);
 
     Precomp *precomp = NULL;
-    SphericalModel *model = NULL;
+    SphericalModel *model = build_model_mpi(args, world_size, this_rank);
 
-    MPI_ORDERED (
-        precomp = newPrecomp(0, args->lmodel, args->lbin, args->data, plm_bin);
-    )
-    
-    FILE *test_open = fopen(coeff_file_bin, "rb");
-    if (test_open == NULL || args->recompute) {
-
-        MPI_ONCE (
-            printf("[main] %s not found, computing Clm and Slm coefficients\n", coeff_file_bin);
-        )
-        model = newSphericalModel(args->lmodel);    
-
-        MPI_Barrier(MPI_COMM_WORLD);
-        
-        double time = modelComputeCSlmPrecompMPI(model, args->data, precomp, world_size, this_rank);
-
-        // only write the model to a binary file if we are the 0th rank
-        MPI_ONCE (
-            printf("[main] Computed coefficients for L = %d in %lfs\n", args->lmodel, time);
-            SphericalModelToBIN(model, args->size_dataset);
-        )
-
-    } else {
-
-        // Model file coeff_file_bin already exists, so load from it
-        fclose(test_open);
-        model = loadSphericalModel(coeff_file_bin, args->lmodel);
-
-    }
+    // if (this_rank != 0);
 
     // output the model to a text file
     if (args->txt) {
@@ -91,7 +85,7 @@ int main(int argc, char **argv) {
         Clock *clock = Clock_new();
 
         FILE *test_open = fopen(binary_prediction_out, "rb");
-        if (test_open == NULL) {
+        if (test_open == NULL || args->recompute) {
 
             /**========================================================================
              *!                           Compute Prediction
@@ -99,22 +93,35 @@ int main(int argc, char **argv) {
             MPI_ONCE (
                 printf("[main] Computing altitude predictions...\n");
             )
+
+            MPI_Barrier(MPI_COMM_WORLD);
             Clock_tic(clock);
-            f_hat = compute_prediction_omp(model, precomp, args->data);
-            Clock_toc(clock);
-            MPI_ONCE (
-                printf("[main] Time to compute prediction: %lfs\n", elapsed_time(clock));
+            f_hat = compute_prediction_mpi(model, precomp, args->data, args->size_dataset, world_size, this_rank);
+
+            MPI_ONCE(
+
+                printf("size f_hat: %d\n", Matrix_size_f(f_hat));
             )
-            save_prediction(f_hat, binary_prediction_out);
-            Vector_print_head_f(f_hat, 10);
+
+            Clock_toc(clock);
+            if (this_rank == 0) {
+                printf("[main] Time to compute prediction: %lfs\n", elapsed_time(clock));
+                save_prediction(f_hat, binary_prediction_out);
+                Vector_print_head_f(f_hat, 10);
+            }
 
         } else {
 
-            printf("[main] Predictions already computed\n");
+            MPI_ONCE (
+                printf("[main] Predictions already computed\n");
+            )
             fclose(test_open);
         }
 
-        head_data(args->data);
+        MPI_ONCE(
+            if (args->print_args)
+                head_data(args->data);
+        )
 
         // We can't reach this point before having the predictions already computed
         if (args->diff) {
@@ -128,32 +135,37 @@ int main(int argc, char **argv) {
                 Clock_tic(clock);
                 f_hat = load_prediction(binary_prediction_out, args->data->N);
                 Clock_toc(clock);
-                printf("[main] Loaded predictions in %lfs\n", elapsed_time(clock));
-                printf("[main] Computing differences\n");
-                FILE *diff_csv = fopen(diff_out, "w");
-                fprintf(diff_csv, "diff\n");
-                printf("Loaded as f_hat: \n");
 
-                Matrix_d *true_value = Matrix_new_d(1, args->data->N);
+                FILE *diff_csv = NULL;
+                MPI_ONCE(
 
-                for (int i = 0; i < args->data->N; i++) {
-                    vecset_d(true_value, i, args->data->r[i]);
-                }
+                    printf("[main] Loaded predictions in %lfs\n", elapsed_time(clock));
+                    printf("[main] Computing differences\n");
+                    diff_csv = fopen(diff_out, "w");
+                    fprintf(diff_csv, "diff\n");
+                    printf("Loaded as f_hat: \n");
+                    Matrix_d *true_value = Matrix_new_d(1, args->data->N);
 
-                Matrix_d *diff_vec = Matrix_new_d(1, args->data->N);
+                    for (int i = 0; i < args->data->N; i++) {
+                        vecset_d(true_value, i, args->data->r[i]);
+                    }
 
-                for (int i = 0; i < args->data->N; i++) {
-                    float delta = f_hat->data[i] - (float) args->data->r[i];
-                    vecset_d(diff_vec, i, delta);
-                    // printf("f_hat->data[%d]: %f, data->r[i]: %u, diff: %lf\n", i, f_hat->data[i], data->r[i], diff);
-                    fprintf(diff_csv, "%lf\n", delta);
-                }
+                    Matrix_d *diff_vec = Matrix_new_d(1, args->data->N);
 
-                Vector_print_head_f(f_hat, 10);
-                Vector_print_head_d(true_value, 10);
-                Vector_print_head_d(diff_vec, 10);
+                    for (int i = 0; i < args->data->N; i++) {
+                        float delta = f_hat->data[i] - (float) args->data->r[i];
+                        vecset_d(diff_vec, i, delta);
+                        // printf("f_hat->data[%d]: %f, data->r[i]: %u, diff: %lf\n", i, f_hat->data[i], data->r[i], diff);
+                        fprintf(diff_csv, "%lf\n", delta);
+                    }
 
-                fclose(diff_csv);
+                    Vector_print_head_f(f_hat, 10);
+                    Vector_print_head_d(true_value, 10);
+                    Vector_print_head_d(diff_vec, 10);
+
+                    fclose(diff_csv);
+                )
+
 
             // } else {
 
@@ -165,4 +177,8 @@ int main(int argc, char **argv) {
 
     MPI_Finalize();
     return 0;
+}
+
+SphericalModel *build_model_mpi(const args_t *args, int world_size, int this_rank) {
+    return buildSphericalModelMPI(args->data, args->lmodel, args->lbin, args->coeff_file_bin, args->recompute, args->from, args->a, world_size, this_rank);
 }

@@ -38,6 +38,86 @@ Matrix_f *compute_prediction_omp(const SphericalModel *model, const Precomp *pre
 
 }
 
+Matrix_f *compute_prediction_mpi(const SphericalModel *model, const Precomp *precomp, const data_iso* data, const char * dataset_size, int world_size, int this_rank) {
+
+    const int N = data->N;
+
+    Matrix_f *f_hat = NULL;
+
+    if (this_rank == 0) {
+        f_hat = Matrix_new_f(1, N);
+    } else {
+        f_hat = Matrix_new_f(0, 0);
+    }
+
+    // printf("[%d] f_hat is a matrix of size: %d\n", this_rank, Matrix_size_f(f_hat));
+
+    int this_workload = compute_workload(N, world_size, this_rank);
+    Matrix_f *this_f_hat = Matrix_new_f(1, this_workload);
+
+    assert(Matrix_size_f(this_f_hat) == this_workload);
+
+    Matrix_i *start_end = compute_startend_array(N, world_size);
+
+    MPI_ONCE(
+        printf("start end matrix: \n");
+        Matrix_print_i(start_end);
+    )
+    Matrix_i *displacements = compute_displacements(N, world_size);
+    Matrix_i *recvcount = compute_workload_array(N, world_size);
+
+    MPI_ONCE(
+        Matrix_print_i(displacements);
+        Matrix_print_i(recvcount);
+    )
+    // We want 
+    int start = start_end->data[this_rank] + 1;
+    int end   = start_end->data[this_rank + 1];
+
+    MPI_ORDERED(
+        printf("[%d] treating [%d, %d]\n", this_rank, start, end);
+    )
+
+    printf("Model address: %p\n", model);
+    Vector_print_head_d(model->C_lm, 10);
+
+    for (int i = start, count = 0; i < end; i++, count++) {
+        *vecacc_f(this_f_hat, count) = compute_prediction_point(model, precomp, data, i);
+        // *vecacc_f(this_f_hat, count) = 0;
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_ORDERED(
+        printf("this_f_hat filled\n");
+    )
+    
+    MPI_Gatherv(
+        this_f_hat->data,
+        this_workload,
+        MPI_FLOAT,
+        f_hat->data,
+        recvcount->data,
+        displacements->data,
+        MPI_FLOAT,
+        0,
+        MPI_COMM_WORLD
+    );
+
+    // Now Load the predictions to sent it to everyone
+    
+    MPI_Barrier(MPI_COMM_WORLD);
+    
+    char binary_in[100] = {0};
+    sprintf(binary_in, "fhat_%s_%d.bin", dataset_size, model->lmax);
+
+    if (this_rank != 0) {
+        f_hat = load_prediction(binary_in, N);
+    }
+
+    return f_hat; 
+
+}
+
 float compute_prediction_point(const SphericalModel *model, const Precomp *precomp, const data_iso *data, int i) {
 
     const Matrix_d *P_lm_th = precomp->Plm_th;
@@ -92,7 +172,7 @@ Matrix_f *load_prediction(const char *binary_in, int N) {
 
 }
 
-// Driver segment of code to load predictions
+// Driver segment of code to load predictions and write differences to files
 void predict_stuff(const args_t *args, const SphericalModel *model, const Precomp *precomp) {
         // compute the predicted values and store them in a binary file
     // fhat_<size_dataset>_<lmodel>.bin
@@ -116,6 +196,8 @@ void predict_stuff(const args_t *args, const SphericalModel *model, const Precom
             printf("[main] Time to compute prediction: %lfs\n", elapsed_time(clock));
             save_prediction(f_hat, binary_prediction_out);
             Vector_print_head_f(f_hat, 10);
+
+            Matrix_free_f(f_hat);
 
         } else {
 
@@ -169,6 +251,8 @@ void predict_stuff(const args_t *args, const SphericalModel *model, const Precom
                 printf("MSE: %lf\n", mean_sq);
                 printf("AAE: %lf\n", mean_abs);
 
+                Matrix_free_f(f_hat);
+
             // } else {
 
                 // printf("[main] Differences already computed, stored in %s\n", diff_out);
@@ -177,8 +261,10 @@ void predict_stuff(const args_t *args, const SphericalModel *model, const Precom
 
             // With the differences computed, print a few statistics about the residuals
 
-
+            
 
         } // if (diff)
+
+        free(clock);
     } // if (predict)
 }

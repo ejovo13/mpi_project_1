@@ -259,6 +259,110 @@ SphericalModel *buildSphericalModel(const data_iso *data, int lmodel, const char
 
     }
 
+    freePrecomp(precomp);
+
+    return model;
+
+}
+
+// Allocate the space for and find the coefficients of a spherical model M of degree l_max
+// I want to sent a copy of the coefficients to EVERY process
+SphericalModel *buildSphericalModelMPI(const data_iso *data, int lmodel, int lbin, const char *coeff_file_bin, bool recompute, bool from, int a, int world_size, int this_rank) {
+
+    char plm_bin[100] = {0};
+    sprintf(plm_bin, "ETOPO1_%s_P%d.bin", data->size_dataset, lbin);
+
+    // Precomp *precomp
+
+    Precomp *precomp = NULL;
+
+    MPI_ORDERED(
+        precomp = newPrecomp(0, lmodel, lbin, data, plm_bin);
+    )
+
+    SphericalModel *model = NULL; // Declare our model pointer
+
+    char from_a_bin[100] = {0};
+    Clock *clock = Clock_new();
+
+    // Let's first check to see if the binary file already exists. If it exists, load from it.
+    FILE *test_open = fopen(coeff_file_bin, "rb");
+    if (test_open == NULL || recompute) {
+
+        // double time = modelComputeCSlmPrecomp(model, data, precomp);
+        MPI_ONCE (
+            if (recompute) {
+                printf("[buildSphericalModel] recomputing coefficients\n");
+            } else {
+                printf("[buildSphericalModel] %s not found, computing Clm and Slm coefficients\n", coeff_file_bin);
+            } 
+        )
+        double time = 0;
+
+        range *r;
+
+        if (from) {
+
+            sprintf(from_a_bin, "sph_%s_%d.bin", data->size_dataset, a);
+            // build a first model up to the a degree
+            MPI_ONCE (
+                printf("[buildSphericalModel] First building model from a: %d\n", a);
+            )
+
+            MPI_Barrier(MPI_COMM_WORLD);
+            model = buildSphericalModelMPI(data, a, lbin, from_a_bin, false, false, 0, world_size, this_rank);
+            MPI_ONCE (
+                printf("[buildSphericalModel] Now computing range [%d, %d]\n", a, lmodel);
+            )
+            
+            Clock_tic(clock);
+            r = modelComputeRangeMPI(a, lmodel, data, precomp, world_size, this_rank);
+            Clock_toc(clock);
+            model = SphericalModelAddRange(model, r);
+            time = elapsed_time(clock);
+
+            freeRange(r);
+            // printRange(r);
+        } else {
+            // Recompute all of the coefficients
+            MPI_ONCE(
+                printf("[buildSphericalModel] Computing full set of coefficients\n");
+            )
+            model = newSphericalModel(lmodel);
+            Clock_tic(clock);
+            // time = modelComputeCSlmPrecompAlt(model, data, precomp);
+            time = modelComputeCSlmPrecompMPI(model, data, precomp, world_size, this_rank);
+            Clock_toc(clock);
+            
+        }
+
+        MPI_ONCE (
+            printf("[buildSpherialModel] Computed coefficients for L = %d in %lfs\n", lmodel, time);
+            SphericalModelToBIN(model, data->size_dataset);
+        )
+
+        // There should now be a binary file storing the coefficients. Let's lock up, and then have everybody read from this 
+        // file to load their own model. This creates a copy of model for every process.
+        MPI_Barrier(MPI_COMM_WORLD);
+
+        if (this_rank != 0) {
+            model = loadSphericalModel(coeff_file_bin, lmodel);
+        }
+
+    } else {
+
+        // Model file coeff_file_bin already exists, so load from it
+        MPI_ONCE (
+            printf("[buildSphericalModel] Loading coefficients for L = %d\n", lmodel);
+        )
+        fclose(test_open);
+        model = loadSphericalModel(coeff_file_bin, lmodel);
+
+    }
+
+    free(clock);
+    freePrecomp(precomp);
+
     return model;
 
 }

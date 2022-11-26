@@ -88,6 +88,8 @@ double modelComputeCSlmPrecompOMP2(SphericalModel *model, const data_iso *data, 
 // Identical to modelComputeCSlmPrecompOMP2 except with the option to specify the number of threads
 double modelComputeCSlmPrecompOMP2Threads(SphericalModel *model, const data_iso *data, const Precomp *precomp, int nthreads);
 
+SphericalModel *buildSphericalModelMPI(const data_iso *data, int lmodel, int lbin, const char *coeff_file_bin, bool recompute, bool from, int a, int world_size, int this_rank);
+
 // Write the coefficients of a spherical model to CSV
 // Use the prefix to indicate what data set the spherical model was trained on
 // pass "" as type if you don't want to specify

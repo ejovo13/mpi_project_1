@@ -45,6 +45,9 @@ typedef struct {
     bool help;
     bool ascii;
 
+    int rank;
+    int world_size;
+
     char *plm_bin;
     char *coeff_file_bin;
 
@@ -72,6 +75,6 @@ args_t *new_args(int argc, char **argv);
 
 void usage(char ** argv);
 
-args_t *process_command_line_options(int argc, char ** argv, bool __log);
+args_t *process_command_line_options(int argc, char ** argv, bool __log, int rank);
 
 #endif // GEODESY_CLI_

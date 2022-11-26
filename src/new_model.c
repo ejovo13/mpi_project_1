@@ -19,21 +19,24 @@
  * @email   : ejovo13@yahoo.com
  * @date    : 2022-10-28
  *========================================================================**/
+SphericalModel *build_model(const args_t *args);
+
 int main(int argc, char **argv) {
 
-    system("cat world_ascii.txt");
-    printf("\n");
+    args_t *args = process_command_line_options(argc, argv, false, 0);
 
-    args_t *args = process_command_line_options(argc, argv, false);
+    if (args->ascii) {
+        system("cat world_ascii.txt");
+        printf("\n");
+    }
+
+    if (args->help) {
+        usage(argv);
+        exit(0);
+    }
 
     if (args->print_args)
         print_args(args);
-
-    char plm_bin[100] = {0};
-    char coeff_file_bin[100] = {0};
-
-    sprintf(coeff_file_bin, "sph_%s_%d.bin", args->size_dataset, args->lmodel);
-    sprintf(plm_bin, "ETOPO1_%s_P%d.bin", args->size_dataset, args->lbin);
 
     if (args->from) {
         assert(args->a != 0);
@@ -44,26 +47,33 @@ int main(int argc, char **argv) {
         printf("==============================\n");
     }
 
-    char command[100] = {0};
+    SphericalModel *model = build_model(args); 
 
-    Precomp *precomp = newPrecomp(0, args->lmodel, args->lbin, args->data, plm_bin);
-    SphericalModel *model = buildSphericalModel(
-        args->data, 
-        args->lmodel, 
-        coeff_file_bin,
-        args->recompute,
-        args->from,
-        args->a
-    );
-
-    printf("\n[main] Model built!\n");
+    printf("[main] Model succesfully built!\n");
 
     // output the model to a text file
     if (args->txt) {
         SphericalModelToTXT(model, args->size_dataset);
     }
 
-    if (args->predict)
+    if (args->predict) {
+        Precomp *precomp = newPrecomp(0, args->lmodel, args->lbin, args->data, args->plm_bin);
         predict_stuff(args, model, precomp);
+        freePrecomp(precomp);
+    }
 
+    freeSphericalModel(model);
+    freeArgs(args);
+
+}
+
+SphericalModel *build_model(const args_t *args) {
+    return buildSphericalModel(
+        args->data, 
+        args->lmodel, 
+        args->coeff_file_bin,
+        args->recompute,
+        args->from,
+        args->a
+    );
 }

@@ -176,7 +176,7 @@ range *modelComputeRange(int a, int b, const data_iso *data, const Precomp *prec
 
 }
 
-// Compute the range[a, b] of C and L coefficients
+// Compute the range[a, b] of C and S coefficients
 range *modelComputeRangeMPI(int a, int b, const data_iso *data, const Precomp *precomp, int world_size, int this_rank) {
 
     range *r = newRange(a, b, NULL, NULL); // Coefficients initialized as zeros(1, ((b + 1)(b + 2) - a(a + 1)) / 2)
@@ -212,12 +212,6 @@ range *modelComputeRangeMPI(int a, int b, const data_iso *data, const Precomp *p
     // Total work is the cardinality of my range
     int total_workload = r->card;
 
-    // Only the ROOT RANK will actually fill the spherical model
-    // Every other rank will, however, compute their own stretch of 
-
-    Clock *clock = Clock_new();
-    Clock_tic(clock);
-
     // Go ahead and compute the workload needed by this rank
     int this_workload = compute_workload(total_workload, world_size, this_rank);
 
@@ -242,13 +236,14 @@ range *modelComputeRangeMPI(int a, int b, const data_iso *data, const Precomp *p
     MPI_Barrier(MPI_COMM_WORLD);
 
     int range_start = r->a * (r->a + 1) / 2;
+    int a_pos = PT(a, 0);
 
-    for (int i = i_start; i <= i_end; i++) {
+    for (int i = i_start, count = 0; i <= i_end; i++, count++) {
         lm_pair pair = i_to_lm(i + range_start);
         cs_pair cs = computeCSPairAlt(pair.l, pair.m, data, precomp);
-        // computeCSPairMPI(pair.l, pair.m, data, precomp, Clm, Slm, i_start);
+        vecset_d(Clm, count, cs.c);
+        vecset_d(Slm, count, cs.s);
     }
-
 
     Matrix_i *recvcounts = compute_workload_array(total_workload, world_size);
     Matrix_i *displacements = compute_displacements(total_workload, world_size);
@@ -257,7 +252,7 @@ range *modelComputeRangeMPI(int a, int b, const data_iso *data, const Precomp *p
     MPI_Gatherv(Clm->data, 
         this_workload, 
         MPI_DOUBLE, 
-        model->C_lm->data, 
+        r->C_lm->data, 
         recvcounts->data, 
         displacements->data, 
         MPI_DOUBLE, 
@@ -268,7 +263,7 @@ range *modelComputeRangeMPI(int a, int b, const data_iso *data, const Precomp *p
     MPI_Gatherv(Slm->data, 
         this_workload, 
         MPI_DOUBLE, 
-        model->S_lm->data, 
+        r->S_lm->data, 
         recvcounts->data, 
         displacements->data, 
         MPI_DOUBLE, 
@@ -276,9 +271,9 @@ range *modelComputeRangeMPI(int a, int b, const data_iso *data, const Precomp *p
         MPI_COMM_WORLD);
 
     Clock_toc(clock);
+    double time = elapsed_time(clock);
+    free(clock);
     
-    double runtime = elapsed_time(clock);
-
     Matrix_free_i(recvcounts);
     Matrix_free_i(displacements);
     Matrix_free_d(Clm);
@@ -286,13 +281,6 @@ range *modelComputeRangeMPI(int a, int b, const data_iso *data, const Precomp *p
     Matrix_free_i(start_end);
     free(clock);
 
-    // return runtime;
-
-    Clock_toc(clock);
-    double time = elapsed_time(clock);
-    free(clock);
-
-    // printf("[modelComputeRange] took %lf s\n", time);
 
     return r;
 
