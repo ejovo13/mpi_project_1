@@ -433,66 +433,7 @@ independly from all the other coefficients.
 
 To provide context, we begin by establishing some new notation.
 
-\subsection{Ranges}
 
-Let $C_l^*$ and $S_l^*$ denote the set of Laplace Series coefficients whose degree is equal to $l$.
-\begin{align*}
-   C_l^* &= \{C_l^0, C_l^1, ..., C_l^l\} \\
-   S_l^* &= \{S_l^0, S_l^1, ..., S_l^l\} 
-\end{align*}
-
-For example, $C_4^* =\{C_4^0, C_4^1, C_4^2, C_4^3, C_4^4\}$. Additionally, Let 
-$C_{[a, b]}$ and $S_{[a, b]}$ denote the union of the coefficients of degree $a$ through $b$:
-
-\begin{align*}
-    C_{[a, b]} &= \bigcup_{l = a}^{b} C_l^* \\
-    S_{[a, b]} &= \bigcup_{l = b}^{b} S_l^*
-\end{align*}
-
-In this section we refer to them as \textbf{ranges}. To elucidate this notation, we have
-
-\begin{align*}
-    S_{[2, 3]} &= S_2^* \cup S_3^* \\
-               &= \{S_2^0, S_2^1, S_2^2\} \cup \{S_3^0, S_3^1, S_3^2, S_3^3\} \\
-    C_{[0, 4]} &= C_0^* \cup C_1^* \cup C_2^* \cup C_3^* \cup C_4^* \\
-               &= \{C_0^0\} \cup \{C_1^0, C_1^1\} \cup \{C_2^0, C_2^1, C_2^2\} \cup \{C_3^0, C_3^1, C_3^2, C_3^3\} \cup \{C_4^0, C_4^1, C_4^2, C_4^3, C_4^4\} \\
-               &= \{C_0^0, C_1^0, C_1^1, C_2^0, C_2^1, C_2^2, C_3^0, C_3^1, C_3^2, C_3^3, C_4^0, C_4^1, C_4^2, C_4^3, C_4^4\} 
-\end{align*}
-
-Any range can easily be partioned into a union of disjoint subranges, a fact that will be exploited to save an enormous amount of computational time when constructing
-increasingly larger models. For example, $C_{[0, 7]}$ can be partitioned into $C_{[0, 3]} \cup C_{[4, 7]}$. $|C_l^*|$, the cardinality of $C_l^*$, is equal to 
-$\frac{(l + 1)(l + 2)}{2}$. We don't immediately see what $|C_{[a, b]}|$ might be equal to but we'd like to find an expression for the cardinality of a general range.
-We solve for this expression by rewriting $C_{[0, b]}$ as a union of disjoint subranges:
-
-\begin{align}
-    C_{[0, b]} &= C_{[0, a - 1]} \cup C_{[a, b]} \\
-    |C_{[0, b]}| &= |C_{[0, a - 1]}| + |C_{[a, b]}| \\
-    \frac{(b + 1)(b + 2)}{2} &= \frac{a(a + 1)}{2} + |C_{[a, b]}|
-\end{align}
-
-Solving for $|C_{[a, b]}|$ yields 
-\begin{equation}
-    |C_{[a, b]}| = \frac{(b + 1)(b + 2) - a(a + 1)}{2} \label{fig:cardinality}
-\end{equation}
-
-Thus $\mathcal{M}_{l_\mathrm{max}}$, a model of degree $l_{\mathrm{max}}$, can be written as $\mathcal{M}_{l_\mathrm{max}} = C_{[0, l_{\mathrm{max}}]} \cup S_{[0, l_{\mathrm{max}}]}$. Assuming that we've already computed the coefficients for a model 
-$\mathcal{M}_l$, all we need to compute a model $\mathcal{M}_{l + n}$ is to compute the new coefficients $C_{[l + 1, l + n]}$ and $S_{[l + 1, l + n]}$!
-
-Let's explore the consequences of this observation using a concrete example. Suppose we have a precomputed model $\mathcal{M}_{500}$ for the high data set. If we would 
-like to compute a model $\mathcal{M}_{600}$ using traditional means, we would need to compute $\frac{(601)(602)}{2} * 2 = 361802$ new coefficients. If, however, we leverage the fact
-that each $C_l^m$ and $S_l^m$ can be computed independently, we are only required to compute the coefficients $C_{[501, 600]}$ and $S_{[501, 600]}$. Computing
-$|C_{[501, 600]}|$ gives us $\frac{(601)(602) - (501)(502)}{2} * 2 = 110300$ new coefficients to compute, which is more than 3 times fewer than for a classic model. What's significant is that 
-once model of a certain degree has been computed, we don't forget the coefficients for subsequent runs. Practically speaking, this optimization paves the way for computation of models with degree 
-in the thousands. A single run with 128 mpi threads to compute $\mathcal{M}_{400}$ clocked in at 180.546s, $\mathcal{M}_{500}$ in 289.548s, and $\mathcal{M}_{600}$ in 442.99s for the \texttt{ETOPO1\_hi.csv} dataset 
-
-We have already shown that the coefficients $C_l^m$ and $S_l^m$ computed via quadrature are independent of the $l_\mathrm{max}$ of a model. Therefore by storing the coefficients values of computed models in a 
-binary file we accumulate a corpus of models of increasing degree. Storing the previously computed coefficients allows us to spread out the computation of a 
-very large model across separate executions. The original quadrature model (and also the least-squares approach) computes all of the coefficients $(l + 1)(l + 2)$ 
-in a single program execution. Once the necessary machinery is in place, everytime we run our program we will be inexorably advancing towards a higher degree 
-model, instead of wasting time reevaluating coefficients that may have already been computed hundreds of times throughout testing.
-
-    Imagine the difference in wealth accumulated of a fictitious character whose bank account gets reset to zero every single data, compared to someone who only ever makes
-deposits and that persist across days.
 
 \section{Conclusion}
 
@@ -535,6 +476,121 @@ angle of $\phi_{iso} = \frac{\pi}{2}$. Conveniently, the longitude $\lambda_{nas
     \end{align}
 
 \end{proof}
+
+\section{Ranges}\label{ranges}
+
+Let $C_l^*$ and $S_l^*$ denote the set of Laplace Series coefficients whose degree is equal to $l$.
+\begin{align*}
+   C_l^* &= \{C_l^0, C_l^1, ..., C_l^l\} \\
+   S_l^* &= \{S_l^0, S_l^1, ..., S_l^l\} 
+\end{align*}
+
+For example, $C_4^* =\{C_4^0, C_4^1, C_4^2, C_4^3, C_4^4\}$. Additionally, Let 
+$C_{[a, b]}$ and $S_{[a, b]}$ denote the union of the coefficients of degree $a$ through $b$:
+
+\begin{align*}
+    C_{[a, b]} &= \bigcup_{l = a}^{b} C_l^* \\
+    S_{[a, b]} &= \bigcup_{l = b}^{b} S_l^*
+\end{align*}
+
+In this section we refer to them as \textbf{ranges}. To elucidate this notation, we have
+
+\begin{align*}
+    S_{[2, 3]} &= S_2^* \cup S_3^* \\
+               &= \{S_2^0, S_2^1, S_2^2\} \cup \{S_3^0, S_3^1, S_3^2, S_3^3\} \\
+    C_{[0, 4]} &= C_0^* \cup C_1^* \cup C_2^* \cup C_3^* \cup C_4^* \\
+               &= \{C_0^0\} \cup \{C_1^0, C_1^1\} \cup \{C_2^0, C_2^1, C_2^2\} \cup \{C_3^0, C_3^1, C_3^2, C_3^3\} \cup \{C_4^0, C_4^1, C_4^2, C_4^3, C_4^4\} \\
+               &= \{C_0^0, C_1^0, C_1^1, C_2^0, C_2^1, C_2^2, C_3^0, C_3^1, C_3^2, C_3^3, C_4^0, C_4^1, C_4^2, C_4^3, C_4^4\} 
+\end{align*}
+
+\subsection{Cardinality}
+
+Any range can easily be partioned into a union of disjoint subranges, a fact that will be exploited to save an enormous amount of computational time when constructing
+increasingly larger models. For example, $C_{[0, 7]}$ can be partitioned into $C_{[0, 3]} \cup C_{[4, 7]}$. $|C_l^*|$, the cardinality of $C_l^*$, is equal to 
+$\frac{(l + 1)(l + 2)}{2}$. We don't immediately see what $|C_{[a, b]}|$ might be equal to but we'd like to find an expression for the cardinality of a general range.
+We solve for this expression by rewriting $C_{[0, b]}$ as a union of disjoint subranges:
+
+\begin{align}
+    C_{[0, b]} &= C_{[0, a - 1]} \cup C_{[a, b]} \\
+    |C_{[0, b]}| &= |C_{[0, a - 1]}| + |C_{[a, b]}| \\
+    \frac{(b + 1)(b + 2)}{2} &= \frac{a(a + 1)}{2} + |C_{[a, b]}|
+\end{align}
+
+Solving for $|C_{[a, b]}|$ yields 
+\begin{equation}
+    |C_{[a, b]}| = \frac{(b + 1)(b + 2) - a(a + 1)}{2} \label{fig:cardinality}
+\end{equation}
+
+Thus $\mathcal{M}_{l_\mathrm{max}}$, a model of degree $l_{\mathrm{max}}$, can be written as $\mathcal{M}_{l_\mathrm{max}} = C_{[0, l_{\mathrm{max}}]} \cup S_{[0, l_{\mathrm{max}}]}$. Assuming that we've already computed the coefficients for a model 
+$\mathcal{M}_l$, all we need to compute a model $\mathcal{M}_{l + n}$ is to compute the new coefficients $C_{[l + 1, l + n]}$ and $S_{[l + 1, l + n]}$!
+
+Let's explore the consequences of this observation using a concrete example. Suppose we have a precomputed model $\mathcal{M}_{500}$ for the high data set. If we would 
+like to compute a model $\mathcal{M}_{600}$ using traditional means, we would need to compute $\frac{(601)(602)}{2} * 2 = 361802$ new coefficients. If, however, we leverage the fact
+that each $C_l^m$ and $S_l^m$ can be computed independently, we are only required to compute the coefficients $C_{[501, 600]}$ and $S_{[501, 600]}$. Computing
+$|C_{[501, 600]}|$ gives us $\frac{(601)(602) - (501)(502)}{2} * 2 = 110300$ new coefficients to compute, which is more than 3 times fewer than for a classic model. What's significant is that 
+once model of a certain degree has been computed, we don't forget the coefficients for subsequent runs. Practically speaking, this optimization paves the way for computation of models with degree 
+in the thousands. A single run with 128 mpi threads to compute $\mathcal{M}_{400}$ clocked in at 180.546s, $\mathcal{M}_{500}$ in 289.548s, and $\mathcal{M}_{600}$ in 442.99s for the \texttt{ETOPO1\_hi.csv} dataset 
+
+We have already shown that the coefficients $C_l^m$ and $S_l^m$ computed via quadrature are independent of the $l_\mathrm{max}$ of a model. Therefore by storing the coefficients values of computed models in a 
+binary file we accumulate a corpus of models of increasing degree. Storing the previously computed coefficients allows us to spread out the computation of a 
+very large model across separate executions. The original quadrature model (and also the least-squares approach) computes all of the coefficients $(l + 1)(l + 2)$ 
+in a single program execution. Once the necessary machinery is in place, everytime we run our program we will be inexorably advancing towards a higher degree 
+model, instead of wasting time reevaluating coefficients that may have already been computed hundreds of times throughout testing.
+
+    Imagine the difference in wealth accumulated of a fictitious character whose bank account gets reset to zero every single data, compared to someone who only ever makes
+deposits and that persist across days.
+\section{Coding methodology}
+
+After successfully implementing the double sum to compute the $C_l^m$ and $S_l^m$ coefficients, I separated the code into three separate
+"phases".
+
+\begin{enumerate}
+    \item Precomputation
+    \item Coefficient Computation
+    \item Prediction
+\end{enumerate}
+
+\subsection{Precomputation}
+
+The goal of this phase is to precompute all the necessary evaluations of the Associated Legendre Polynomials and then store them in 
+a matrix. We remind the reader that in our double sum we have the term $\bar P_l^m\cos \theta_i$. We first note that this term does \textit{not}
+depend on our longitude $\phi$, and therefore for a given $(l, m)$ pair we \textbf{only} need to compute $n_\theta$ distinct values and not
+N, the total number of points in our dataset (where $N = n_\theta \cdot n_\phi)$. Thus, to build a model of degree $L$ we require 
+$(L + 1)(L + 2)n_\theta$ precomputed values. We store these values in a $n_\theta \times (L + 1)(L + 2)$ matrix
+
+\begin{equation}
+    \begin{bmatrix}
+        P_0^0(\cos\theta_0) & P_1^0(\cos\theta_0) & P_1^1(\cos\theta_0) & \dots & P_L^L(\cos\theta_0) \\
+        P_0^0(\cos\theta_1) & P_1^0(\cos\theta_1) & P_1^1(\cos\theta_1) & \dots & P_L^L(\cos\theta_1) \\
+        \vdots & & & & \vdots \\
+        P_0^0(\cos\theta_{n_\theta}) & P_1^0(\theta_{n_\theta}) & P_1^1(\theta_{n_\theta}) & \dots & P_L^L(\theta_{n_\theta}) \\
+    \end{bmatrix}
+\end{equation}
+
+often referred to as \texttt{Plm} or \texttt{P\_lm} in the code. Other values can be precomputed and stored in matrices to turn almost all operations
+in the quadrature inner loop into dereferences. We effectively compute lookup tables for all $P_l^m(\cos \theta_i)$, $\cos(m\phi_j)$, and $\sin(m\phi_j)$.
+
+The function \texttt{newPrecomp} creates a new \texttt{Precomp *} object storing the values of the aforementioned terms. Thus, for a very small initial price,
+we save a lot of time in the most algorithmically complex part of our program, the integral double loop.
+
+% \begin{figure}[h!]
+%     \centering
+%     \includegraphics[width=0.5\textwidth]{media/code_precomp.png}
+% \end{figure}
+
+\subsection{Coefficient Computation}
+
+The computation of a single coefficient $C_l^m$ or $S_l^m$ boils down to a double integral across $n_\theta$ points in $[0, \pi]$
+and $n_\phi$ points $[0, 2\pi]$. A single coefficient can thus be computed in $O(N)$ time. Ergo, computing a model $M_l$ runs in 
+$O(Nl^2)$ time.
+
+We optimize the computation of large models by storing the coefficients of lower degree models and then using them in subsequent 
+models. For example, if we already had a model with $l = 200$ computed, we would compute a model with $l = 300$ only by computing 
+the coefficients $C_{[201, 300]}$ and $S_{[201, 300]}$. If this notation isn't familiar, check out \ref{ranges}
+
+\section{Optimizations}
+
+This section catalogs the major and minor optimizations that were implemented throughout the lifetime of this project.
 
 \nocite{*}
 

@@ -11,7 +11,6 @@ void write_binary_plm(int lmax, const Matrix_d *th, const char *binary_file_out)
     // sprintf(filename, "ETOPO1_%s_P%d.bin", dataset, lmax);
 
     // Allocate space for a single row of the matrix
-    Matrix_d *plm = Matrix_new_d(1, LL);
 
     // initialize coefficients a and b
     struct spherical_harmonics sph_model;
@@ -25,13 +24,20 @@ void write_binary_plm(int lmax, const Matrix_d *th, const char *binary_file_out)
 
     Clock *clock = Clock_new();
 
-    Clock_tic(clock);
-        for (int i = 0; i < n; i++) {
-            // Now compute the p values
-            computeP(&sph_model, plm->data, cos(th->data[i]));
-            fwrite(plm->data, n_bytes_per_row, 1, bin);
-        }
-    Clock_toc(clock);
+
+        Clock_tic(clock);
+
+
+    Matrix_d *plm = Matrix_new_d(1, LL);
+
+    for (int i = 0; i < n; i++) {
+        // Now compute the p values
+        computeP(&sph_model, plm->data, cos(th->data[i]));
+        fwrite(plm->data, n_bytes_per_row, 1, bin);
+    }
+
+
+        Clock_toc(clock);
 
     fclose(bin);
     printf("[write_binary_plm] Wrote to binary file: %s in %lfs\n", binary_file_out, elapsed_time(clock));
@@ -65,6 +71,44 @@ Matrix_d *read_binary_plm(int lmax, int n_th, const char *binary_filename, bool 
 
     if (__log)
         printf("[read_binary_plm] Read from binary file: %s\n", binary_filename);
+
+    return P_lm_th;
+
+}
+
+// Load only plm from l = a to b
+Matrix_d *read_binary_plm_range(int a, int b, int n_th, const char *binary_filename, bool __log) {
+
+    const size_t card = ((b + 1) * (b + 2) - (a) * (a + 1))/ 2;
+
+    if (__log) 
+        printf("[read_binary_plm_range] [a, b]: [%d, %d], card: %lu, n_theta: %d\n", a, b, card, n_th);
+
+    // Allocate a Matrix to store the contents
+    Matrix_d *P_lm_th = Matrix_new_d(n_th, card);
+
+    if (__log)
+        printf("[read_binary_plm] Allocated new matrix of size %lu x %lu\n", P_lm_th->nrows, P_lm_th->ncols);
+
+    size_t n_bytes_per_row = sizeof(double) * card;
+    size_t n_bytes_before_a = sizeof(double) * (a * (a + 1) / 2);
+
+    FILE *bin = fopen(binary_filename, "rb");
+
+    if (!bin) {
+        errx(2, "[read_binary_plm_range] failed to open %s; exiting\n", binary_filename);
+    }
+
+    // now fill up this matrix, row by row
+    for (int i = 0; i < n_th; i++) {
+        fseek(bin, n_bytes_before_a, SEEK_CUR); // skip the first (a - 1) computed values for each row
+        fread(matacc_d(P_lm_th, i, 0), n_bytes_per_row, 1, bin);
+    }
+
+    fclose(bin);
+
+    if (__log)
+        printf("[read_binary_plm_range] Read from binary file: %s\n", binary_filename);
 
     return P_lm_th;
 
@@ -132,6 +176,8 @@ Precomp *newPrecomp(int L0, int LF, int Lmax, const data_iso *data, const char *
     // Now retrieve the proper values
     // Ideally I should only be loading L0 - LF into memory
     precomp->Plm_th = read_binary_plm(Lmax, data->t, plm_bin, false);
+
+    // Matrix_print_d(precomp->Plm_th);
 
     precomp->sinth  = Matrix_new_d(1, data->t);
     // m goes from 0 to L

@@ -7,6 +7,7 @@ void test_range(const SphericalModel *model);
 void test_compute_ranges(const SphericalModel *model, const data_iso *data);
 void test_model_add_range();
 void test_model_alt(); // test if the alt way of computing coefficients returns the same model
+void test_read_binary_range();
 
 int main() {
 
@@ -20,6 +21,7 @@ int main() {
     test_overlapping(model);
     // test_compute_ranges(model, data);
     test_model_add_range();
+    test_read_binary_range();
 
     return 0;
 }
@@ -238,6 +240,28 @@ void test_model_alt() {
 
     // data_iso *data = get_data_small(false);
     // SphericalModel *model = buildSphericalModel()
+
+
+}
+
+void test_read_binary_range() {
+
+    // Let's load a range of plm
+
+    // Matrix_d *plm = read_binary_plm_range(0, 5, 180, "ETOPO1_small_P200.bin", true);
+    Matrix_d *plm = read_binary_plm(5, 180, "ETOPO1_small_P5.bin", true);
+
+    Matrix_d *plm_range = read_binary_plm_range(2, 5, 180, "ETOPO1_small_P5.bin", true);
+    // Precomp = 
+
+    // Vector_print_head_d(plm, 20);
+
+    Matrix_print_d(plm);
+    Matrix_print_d(plm_range); // visual inspection legit
+
+    // Vector_print_head_d(plm, 20);
+    // Vector_print_head_d(plm_range, 20);
+
 
 
 }

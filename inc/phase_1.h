@@ -41,6 +41,7 @@ Matrix_d *read_binary_plm(int lmax, int n_theta, const char *binary_filename, bo
 Matrix_d *read_binary_plm_l(int lmax, int l, int n_theta, const char *binary_filename);
 
 // Need a RANGE function that returns a precomputed set of L's between a certain range
+Matrix_d *read_binary_plm_range(int a, int b, int n_th, const char *binary_filename, bool __log);
 
 /**========================================================================
  *!               More Robust Precomputed Values
@@ -63,6 +64,7 @@ typedef struct precomp_t {
 Precomp *newPrecomp(int L0, int LF, int Lmax, const data_iso *data, const char *plm_bin);
 
 void freePrecomp(Precomp *precomp);
+
 
 /**========================================================================
  *!                           SphericalModel + Precomp + Data
