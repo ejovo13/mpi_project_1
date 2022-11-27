@@ -58,17 +58,19 @@
 }
 
 
+
 \section{Abstract}
 
-This paper provides an alternative approach to the computation
-of Laplace Series coefficients $C_l^m$ and $S_l^m$ with algorithmic complexity $O(Nl^2)$ in time and $O(Nl^2)$ in space. We 
+This paper provides an alternative approach to the computation of Laplace Series coefficients 
+$C_l^m$ and $S_l^m$ with algorithmic complexity $O(Nl^2)$ in time and $O(Nl^2)$ in space. We 
 make use of the fact that the spherical harmonics form a complete and orthogonal set to directly
 compute $C_l^m$ as a 2-dimensional integral. We estimate this integral using numerical quadrature techniques
 and the resulting model is blazing fast compared to a least squares model running in $O(Nl^4$). Harnessing the structure of the 
 data sets, we perform many optimization to reduce the amount of data needed to be stored in memory and save time by precomputing values of the 
 associated Legendre polynomials. We explore the scalability of this algorithm when implemented in parallel and we present a high-degree model of the
-ultra data set.
-
+ultra data set.\\
+\\
+\noindent The git repository for this project is hosted at \href{https://github.com/ejovo13/geodesy}{https://github.com/ejovo13/geodesy}
 
 
 \section{Preliminaries}
@@ -102,7 +104,7 @@ periodic functions. Written in terms of the normalized legendre polynomials, the
 
 We propose a solution to directly compute an approximation of the $C_l^m$ and $S_l^m$ using numerical integration.
 
-\newpage
+% \newpage
 
 \section{Data Sets}
 
@@ -138,20 +140,16 @@ the characteristics of each data set.
     \begin{tabular}{ c |  c  c  c }
         & $n_\theta$ & $n_\phi$ & $N$ \\ 
     \hline
-    small & 180 & 360 & 64800\\
-    med & 540 & 1080 & 583200\\
-    hi \\
-    ultra
+    small & 180 & 360 & 64,800\\
+    med & 540 & 1080 & 583,200\\
+    hi & 1800 & 3600 & 6,480,000\\
+    ultra & 10800 & 21600 & 233,280,000
     \end{tabular}
     \end{center}
 % \end{figure}
 $$\theta \in [0, \pi],\ \ \phi \in [0, \pi2]$$
 
 We'll use these values later when we study the time it takes to compute our model.
-
-\subsection{Visualization}
-
-\textbf{TODO:} [ ] add 3-d maps
 
 \section{Mathematical Model}
 
@@ -202,13 +200,42 @@ provides numerous benefits to the overall methodology and allows us to compute h
 
 We experimentally corroborate the theoretical hypothesis that the least squares computation is of time complexity $O(Nl^4)$ for a data set of size $N$ and 
 model degree $l$.
-
 \begin{figure}[h!]
+\begin{minipage}{0.7\linewidth}
     \centering
-    \includegraphics[width=0.5\textwidth]{media/average_runtime.png}
-    \caption{A timing comparison between least squares $\in O(Nl^4)$ and numerical quadrature $\in O(Nl^2)$ to compute the coefficients $C_l^m$ and $S_l^m$ for the small ETOPO1 data set. 
-    For each degree of the model Laplace coefficients were computed 5 times. Programs were run in sequential with 1 processor. TODO: Run a linear regression}
-    \label{fig:runtime}
+    \includegraphics[width=0.8\textwidth]{media/average_runtime.png}
+\end{minipage}
+\begin{minipage}{0.28\linewidth}
+\begin{tabular}{c | c c}
+     & time (s) & \\
+    $l_{\mathrm{max}}$ & least squares & quadrature \\
+    \hline
+    0 & 0.000645 & 0.002005 \\
+    1 & 0.004577 & 0.006622 \\
+    2 & 0.017677 & 0.014134 \\
+    3 & 0.049925 & 0.024516 \\
+    4 & 0.114798 & 0.037732 \\
+    5 & 0.230900 & 0.054001 \\
+    6 & 0.418434 & 0.073184 \\
+    7 & 0.703679 & 0.096786 \\
+    8 & 1.119336 & 0.129481 \\
+    9 & 1.692747 & 0.159533 \\
+    10 & 2.446453 & 0.192791 \\
+    11 & 3.395580 & 0.230535 \\
+    12 & 4.665725 & 0.270456 \\
+    13 & 6.261898 & 0.313708 \\
+    14 & 8.231827 & 0.363096 \\
+    15 & 10.645083 & 0.408810 \\
+    16 & 13.754764 & 0.462994 \\
+    17 & 17.012827 & 0.520199 \\
+    18 & 21.165062 & 0.580546 \\
+    19 & 25.902614 & 0.622901 \\
+    20 & 31.678325 & 0.657562
+\end{tabular}
+\end{minipage}
+\caption{A timing comparison between least squares $\in O(Nl^4)$ and numerical quadrature $\in O(Nl^2)$ to compute the coefficients $C_l^m$ and $S_l^m$ for the small ETOPO1 data set. 
+For each degree of the model Laplace coefficients were computed 5 times. Programs were run in sequential with 1 processor. TODO: Run a linear regression}
+\label{fig:runtime}
 \end{figure}
 
 
@@ -358,7 +385,7 @@ and the average absolute error, $\frac{1}{N}\sum_{n = 1}^N |\hat f_i - f_i|$, be
 AAE 81.77012. We have nearly halved the AAE by increasing the degree of our model by a factor of 3. Next, we plot the distributions of the residuals for varying $l$.
 \newpage
 
-\begin{figure}
+\begin{figure}[h!]
     \centering
     \includegraphics[width=0.85\linewidth]{media/med_err_density.png}
     \caption{Kernel density estimates for the distribution of $r_i$. The model with the lowest variance occurs at $l = 600$.}
@@ -375,13 +402,12 @@ To conclude our analysis of higher degree models, we provide a table with import
 
 \section{Parallelization} 
 
-In this section we present our parallelization algorithms and evaluate their scalability and efficiency. 
+In this section we present our parallelization algorithms and evaluate their scalability and efficiency. The most computationally
+intensive section of our program is the computation of the coefficients $C_l^m, S_l^m$ for all pairs $(l, m)$. Calculating a single 
+coefficient amounts to computing a double integral running in $O(N)$ time. Then, there is an outer loop running $\frac{(l_\mathrm{max} + 1)(l_\mathrm{max} + 2)}{2}$
+that we seek to parallelize.
 
-\subsection{Implementation}
-
-The meat of our program and most computationally expensive component is the computation of the all of the coefficients up until a certain $l_{\mathrm{max}}$. 
-
-\subsubsection{OpenMP}
+\subsection{OpenMP}
 
 The first loop that I tried to parallelize with OpenMP was the internal for loop computing the summation of N observations of $f(\phi_i, \theta_i)$ that needs to be run for each $C_l^m, S_l^m$ pair. 
 This seems completely logical, since the summation is the largest loop and we ideally want to reduce the overhead associated with parallel mechanisms like spawning new threads. 
@@ -390,13 +416,20 @@ we failed to consider that for every value $(l, m)$ we are incurring overhead by
 
     Our second attempt at parallelization targeted the \textit{outer} loop that iterates all the valid $(l, m)$ pairs, computing $C_l^m, S_l^m$. This implementation, which only split 
     apart a single for-loop, was immediately successful.
-\subsubsection{OpenMPI}
+    
+\begin{figure}[h!]
+    \centering
+    \begin{minipage}{0.45\textwidth}
+        \includegraphics[width=0.9\linewidth]{media/omp_execution.png}
+    \end{minipage}
+    \begin{minipage}{0.45\textwidth}
+        \includegraphics[width=0.9\linewidth]{media/omp_speedup.png}
+    \end{minipage}
+\end{figure}
 
+\subsection{OpenMPI}
 After wrangling some indexing errors introduced when adapting to OpenMPI's memory model, we managed to succesfully compile a parallel mpi implementation
 of our algorithm.
-
-\subsection{Benchmark}
-
 The initial tests of scalability were performed on a desktop with a 12 core cpu. We repeated the computation of models with degre 50, 100, and 200 ten times, then 
 plotted the average runtime of these trials and other pertinent statistics.
 
@@ -418,7 +451,7 @@ runtime with p mpi processes. The dashed line shows the ideal speedup factor, $S
 For a sufficiently large model (in the case of the small data set, $l = 200$), the speedup factor for mpi programs ran with up to 12 processes approaches ideal values. We cannot
 overstate the significance of this result. \textbf{The speedup factor of computing our models of degree $l$ with $p$ mpi processes approaches ideal levels.}
 
-\begin{figure}
+\begin{figure}[h!]
     \centering
     \includegraphics[width=0.5\linewidth]{media/mpi_efficieny.png}
     \caption{The efficiency, $\frac{S(p)}{p}$, is a test of how much of $p$ threads' theoretical computation power is
@@ -426,24 +459,43 @@ overstate the significance of this result. \textbf{The speedup factor of computi
 
 \end{figure}
 
-\section{Final phase}
+We then moved over to grid5000k to test the scalability of our method when using multiple nodes and hundreds
+of processors. Using up to 200 processes we compute the coefficients for a model $M_{200}$
 
-In this section we present the implementation of a final optimization which makes use of the fact that we can compute a given $(C_l^m, S_l^m)$
-independly from all the other coefficients.
+\begin{figure}[h!]
+    \centering
+    \begin{minipage}{0.45\linewidth}
+    \includegraphics[width=0.95\linewidth]{media/speedup_mpi_200.png}
+    \end{minipage}
+    \centering
+    \begin{minipage}{0.45\linewidth}
+    \includegraphics[width=0.95\linewidth]{media/scalability_mpi_200.png}
+    \end{minipage}
+    \caption{On the left hand side we have the Speedup factor for a model of degree $l = 200$ run with $p$ processes, $p \in [20, 40, \dots, 200]$
+    On the right hand we have the efficiency of our parallel implementation. In solid black are the ideal limits of scalability ($p$) and 
+    efficienty (1).}
+\end{figure}
 
-To provide context, we begin by establishing some new notation.
+\section{Results}
 
+Currently, we use the model of degree 600 trained
 
 
 \section{Conclusion}
 
-Instead of calculating the model with a direct method that runs in $O(Nl_{max}^4)$ time, We propose a hybrid model that first directly computes the coefficients in $O(Nl_{max}^2)$ time then 
-iteratively improves the MSE via stochastic methods running in $O(n_{training}n_{sample}l_{max}^2)$ time.
+    Instead of computing all $(L + 1)(L + 2)$ coefficients at a single time by solving a an overdetermined linear system of $N$ equations
+    via least squares, we propose a far superior method that reduces the time complexity of computing a model $M_L$ from $O(NL^4)$ to 
+    $O(NL^2)$. Furthermore, we reduce the size complexity from $8N(L + 1)^2$ bytes to to $8n_\theta\frac{(L + 1)(L + 2)}{2}$, thus reducing the time 
+    complexity by hundreds for the small dataset and by tens of thousands for the ultra data set. This allows for the computation of models
+    on extremely large $L$; the amount of ram used is reduced.
 
-Results are to follow :)
+    Using numerical quadrature to directly compute the coefficients provides numerous benefits, one of which is the extremely straightforward implementation 
+    of parallel versions (``embarrassingly parallel''). This leads to a sturdy and high efficiency of the algorithm, staying above $0.75$ when launching 
+    $200$ processors. That is an extremely impressive result and I am satisfied with this scalability, which persists even when starting with a high number of MPI processes.
 
-
-
+    Another ridiculous advantage that this approach offers as opposed with least squares hinges on the observations that we can compute any $(C_l^m, S_l^m)$ for any given
+    $(l, m)$, independent of other $(l, m)$ pairs. This allows us to stockpile the values of coefficients of lower degree models. When we wish to augment the degree of our model,
+    we simply compute only the new coefficients that have not been previously computed. This allows us to accumulate models of higher and higher degree.
 
 
 \appendix

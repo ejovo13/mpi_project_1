@@ -89,6 +89,8 @@ p <- df.long |>
     geom_point() +
     labs(color = "Model degree") +
     scale_x_continuous(breaks = 1:12) +
-    theme(text = element_text(size = 20))
+    scale_y_continuous(limits = c(0, 1.15)) +
+    theme(text = element_text(size = 20)) +
+    geom_line(aes(x = rep(1:12, 3), y = rep(1, 36)), col = "black") 
 
 ggsave("mpi_efficieny.png", p)

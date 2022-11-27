@@ -17,14 +17,17 @@ df.speedup <- df |>
 df.sp.longer <- df.speedup |>
     pivot_longer(c(2:5), names_to = "model_order", values_to = "speedup")
 
-df.sp.longer |> 
-    ggplot(aes(n_threads, speedup)) + 
-    geom_line(aes(col = model_order)) + 
+p <- df.sp.longer |> 
+    ggplot(aes(n_threads, speedup, col = model_order)) + 
+    geom_line() + 
     geom_point() +
+    geom_line(aes(x = rep(1:12, 4), y = rep(1:12, 4)), color = "black", size = 0.9) +
     scale_x_continuous(breaks = 1:12) +
     scale_colour_discrete(labels = legend_order, name = "Model order") +
-    labs(x = "n threads", y = "speedup factor")
+    labs(x = "Number OMP threads", y = "speedup factor") +
+    theme(text = element_text(size = 20))
 
+ggsave("omp_speedup.png", p)
 # Plot the functions of time
 
 df.longer <- df |>
@@ -32,14 +35,16 @@ df.longer <- df |>
     mutate(model_order = factor(model_order, levels = c("t150", "t100", "t50", "t25")))
 
 
-
 # df.longer |> ggplot(aes(n_threads, time)) + geom_line() + facet_wrap(~ model_order)
 
-df.longer |> 
-    ggplot(aes(n_threads, time)) + 
-    geom_line(aes(col = model_order)) + 
+p <- df.longer |> 
+    ggplot(aes(n_threads, time, col = model_order)) + 
+    geom_line() + 
     geom_point() +
     scale_x_continuous(breaks = 1:12) +
     scale_colour_discrete(labels = legend_order, name = "Model order") +
-    labs(x = "n threads", y = "time (s)")
+    labs(x = "Number OMP threads", y = "time (s)") +
+    theme(text = element_text(size = 20))
+
+ggsave("omp_execution.png", p)
 
