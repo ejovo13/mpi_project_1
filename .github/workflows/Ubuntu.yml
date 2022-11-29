@@ -18,12 +18,16 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Checkout submodules
+      uses: textbook/git-checkout-submodule-action@master
+      with:
+        remote: true
 
     - name: Install mpi 
       run: sudo apt install openmpi-bin openmpi-common libopenmpi-dev
 
-    - name: Load submodule
-      run: git submodule update --init --recursive
+    # - name: Load submodule
+    #   run: git submodule update --init --recursive
 
 
     - name: Configure CMake
