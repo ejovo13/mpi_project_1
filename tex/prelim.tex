@@ -195,6 +195,8 @@ Let's start by exploring the small data set and benchmarking how long it takes t
 a) an overdetermined system of linear equations b) numerical integration. Our aim in this section is to show that computing the coefficients via numerical integration
 provides numerous benefits to the overall methodology and allows us to compute higher degree models with lower error more efficiently.
 
+\newpage
+
 \subsubsection{Timing}
 
 
@@ -256,6 +258,7 @@ In the least squares model, coefficients are carefully selected by minimizing th
 by construction, finding optimal coefficients that should miniimze the MSE. We compare how the average abs error, the AAE, varies with
 respect to the degree of the model.
 
+% \newpage
 
 \begin{figure}[h!]
     \centering
@@ -274,6 +277,8 @@ is 148.76, compared to the degree 20 model whos AAE is 641.1.
 In this section we explore the distribution of error values ($\hat f - f$) for models up to degree $l = 300$, computed for the small, medium, and high resolution data sets.
 
 We start off by showing the evolution of the model's estimates as the degree $l$ increases
+
+\newpage
 
 \begin{figure}[h!]
     \begin{minipage}{.245\textwidth}
@@ -348,6 +353,8 @@ Recall to a simpler time where we computed models of degree $l = 20$. Refer to F
 600 for a model of the small data with coefficients going up to $l = 20$. Now consider the following distributions of the errors of models built on the small data set
 with degrees up to 300.
 
+\newpage
+
 \begin{figure}[h!]
 \begin{minipage}{.45\textwidth}
     \centering
@@ -380,10 +387,11 @@ We conduct an analagous exploration with the medium data set, this time generati
     built on the medium dataset. The red dashed line shows the AAE($l$) of models trained on the small dataset.}
 \end{figure}
 
+\newpage
 Just like with the small dataset, we find that the AAE($l$) decreases as $l$ gets bigger, but there is a certain point for the which the model starts to misbehave
 and the average absolute error, $\frac{1}{N}\sum_{n = 1}^N |\hat f_i - f_i|$, begins to rise. We find that the medium data set has a near optimal model at $l = 600$, with 
 AAE 81.77012. We have nearly halved the AAE by increasing the degree of our model by a factor of 3. Next, we plot the distributions of the residuals for varying $l$.
-\newpage
+
 
 \begin{figure}[h!]
     \centering
@@ -451,6 +459,8 @@ runtime with p mpi processes. The dashed line shows the ideal speedup factor, $S
 For a sufficiently large model (in the case of the small data set, $l = 200$), the speedup factor for mpi programs ran with up to 12 processes approaches ideal values. We cannot
 overstate the significance of this result. \textbf{The speedup factor of computing our models of degree $l$ with $p$ mpi processes approaches ideal levels.}
 
+\newpage
+
 \begin{figure}[h!]
     \centering
     \includegraphics[width=0.5\linewidth]{media/mpi_efficieny.png}
@@ -478,7 +488,10 @@ of processors. Using up to 200 processes we compute the coefficients for a model
 
 \section{Results}
 
-Currently, we use the model of degree 600 trained
+Currently, we use the model of degree 600 trained on the medium dataset as our best model. The coefficients are stored in \texttt{sph\_med\_600.txt}
+in the home folder of the git repository. When verified on the medium dataset, the Average Absolute error for a model of degree 600 on the medium dataset is 81.77012.
+The previous error curves indicate that the error for a smaller dataset is nearly identical for the error in a larger dataset. We can therefore conclude
+that a model with degree 600 has an AAE of around 90 for the ultra data set.
 
 
 \section{Conclusion}
@@ -639,10 +652,6 @@ $O(Nl^2)$ time.
 We optimize the computation of large models by storing the coefficients of lower degree models and then using them in subsequent 
 models. For example, if we already had a model with $l = 200$ computed, we would compute a model with $l = 300$ only by computing 
 the coefficients $C_{[201, 300]}$ and $S_{[201, 300]}$. If this notation isn't familiar, check out \ref{ranges}
-
-\section{Optimizations}
-
-This section catalogs the major and minor optimizations that were implemented throughout the lifetime of this project.
 
 \nocite{*}
 

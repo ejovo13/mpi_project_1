@@ -12,4 +12,6 @@ validate
 *.png
 build
 release
+debug
+*.html
 ETOPO1_ultra.bin

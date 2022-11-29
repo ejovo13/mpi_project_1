@@ -8,10 +8,17 @@ find_package(MPI REQUIRED)
 
 add_compile_options(
     -Werror
-    $<$<CONFIG:Build>:-O>
+    $<$<CONFIG:Release>:-O>
     $<$<CONFIG:Debug>:-g>
     $<$<CONFIG:Debug>:-Wall>
     $<$<CONFIG:Debug>:-Wno-unknown-pragmas>
+    $<$<CONFIG:Debug>:-fsanitize=address>
+    $<$<CONFIG:Debug>:-static-libasan>
+    # $<$<CONFIG:Release>:-g>
+    # $<$<CONFIG:Release>:-Wall>
+    # $<$<CONFIG:Release>:-Wno-unknown-pragmas>
+    # $<$<CONFIG:Release>:-fsanitize=address>
+    # $<$<CONFIG:Release>:-static-libasan>
 )
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")

@@ -6,7 +6,10 @@ Modelling the earth with Spherical Harmonic functions
 
 Compute a model with the lowest average error
 
-### Data Set
+| | | |
+| --- | --- | --- |
+|![](tex/media/gif/sph_600.gif) | ![](tex/media/gif/sph_600_2.gif) | ![](tex/media/gif/sph_600_alt.gif) |
 
-### TODO
-- [ ] Implement function to compute a range of coefficients
+#### Building
+
+Geodesy is built with CMake
