@@ -18,10 +18,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Checkout submodules
-      uses: textbook/git-checkout-submodule-action@master
       with:
-        remote: true
+        submodules: recursive
+
 
     - name: Install mpi 
       run: sudo apt install openmpi-bin openmpi-common libopenmpi-dev
