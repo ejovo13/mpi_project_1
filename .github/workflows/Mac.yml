@@ -22,6 +22,8 @@ jobs:
 
     - name: Install openmpi
       run: brew install open-mpi
+
+    - name: Install open mp
       run: brew install libomp
 
     - name: Configure CMake
