@@ -74,3 +74,25 @@ mpirun --mca opal_warn_on_missing_libcuda 0 -np 2 ./new_model_mpi --small --lmod
 ```
 
 ![](tex/media/new_model_mpi.png)
+
+The AAE printed at the bottom is exactly the same as for `new_model` and `new_model_2` which confirms that the coefficients computed are consistent across different implementations. 
+
+### Validation
+
+To confirm that the AAE computed by our program is exactly the same as by the original `validate` program, let's compute a degree 20 model.
+
+```
+./new_model --small --lmodel 20 --no-ascii --diff --txt
+```
+
+![](tex/media/new_model_20.png)
+
+Which computes a model whose AAE is 641.1. We can use the old model's validation program `validate` to verify that our validation results are consistent with the provided implementation.
+
+```
+./validate --data ../../csv/ETOPO1_small.csv --model sph_small_20.txt --npoint 64800 --lmax 20
+```
+
+![](tex/media/validate_20.png)
+
+Indeed, the Average error computed by `validate` is 641.1 and therefore we are confident with the validation of our programs `new_model`, `new_model_omp2`, and `new_model_mpi`.
