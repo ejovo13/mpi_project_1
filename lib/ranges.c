@@ -199,7 +199,7 @@ range *modelComputeRangeMPI(int a, int b, const data_iso *data, const Precomp *p
     Clock *clock = Clock_new();
     Clock_tic(clock);
 
-    cs_pair cs;
+    // cs_pair cs;
 
     // Total work is the cardinality of my range
     int total_workload = r->card / 2;

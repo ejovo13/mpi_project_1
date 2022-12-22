@@ -12,8 +12,8 @@ add_compile_options(
     $<$<CONFIG:Debug>:-g>
     $<$<CONFIG:Debug>:-Wall>
     $<$<CONFIG:Debug>:-Wno-unknown-pragmas>
-    $<$<CONFIG:Debug>:-fsanitize=address>
-    $<$<CONFIG:Debug>:-static-libasan>
+    # $<$<CONFIG:Debug>:-fsanitize=address>
+    # $<$<CONFIG:Debug>:-static-libasan>
     # $<$<CONFIG:Release>:-g>
     # $<$<CONFIG:Release>:-Wall>
     # $<$<CONFIG:Release>:-Wno-unknown-pragmas>
